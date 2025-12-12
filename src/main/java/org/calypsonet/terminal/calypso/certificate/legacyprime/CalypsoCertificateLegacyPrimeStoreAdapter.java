@@ -12,7 +12,6 @@
 package org.calypsonet.terminal.calypso.certificate.legacyprime;
 
 import java.security.interfaces.RSAPublicKey;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import org.eclipse.keyple.core.util.Assert;
@@ -29,7 +28,8 @@ import org.eclipse.keyple.core.util.HexUtil;
 final class CalypsoCertificateLegacyPrimeStoreAdapter
     implements CalypsoCertificateLegacyPrimeStore {
 
-  private final Map<ByteArrayWrapper, RSAPublicKey> publicKeys;
+  private final Map<String, RSAPublicKey> pcaPublicKeys;
+  private final Map<String, CaCertificate> caCertificates;
 
   /**
    * Creates a new instance of the store.
@@ -37,7 +37,8 @@ final class CalypsoCertificateLegacyPrimeStoreAdapter
    * @since 0.1.0
    */
   CalypsoCertificateLegacyPrimeStoreAdapter() {
-    this.publicKeys = new HashMap<>();
+    this.pcaPublicKeys = new HashMap<>();
+    this.caCertificates = new HashMap<>();
   }
 
   /**
@@ -53,13 +54,13 @@ final class CalypsoCertificateLegacyPrimeStoreAdapter
         .isEqual(pcaPublicKey.getModulus().bitLength(), 2048, "PCA public key modulus bit length")
         .isEqual(pcaPublicKey.getPublicExponent().intValue(), 65537, "PCA public key exponent");
 
-    ByteArrayWrapper keyRef = new ByteArrayWrapper(pcaPublicKeyReference);
-    if (publicKeys.containsKey(keyRef)) {
+    String keyRef = HexUtil.toHex(pcaPublicKeyReference);
+    if (pcaPublicKeys.containsKey(keyRef) || caCertificates.containsKey(keyRef)) {
       throw new IllegalStateException(
-          "Public key reference already exists in the store: " + HexUtil.toHex(pcaPublicKeyReference));
+          "Public key reference already exists in the store: " + keyRef);
     }
 
-    publicKeys.put(keyRef, pcaPublicKey);
+    pcaPublicKeys.put(keyRef, pcaPublicKey);
   }
 
   /**
@@ -74,10 +75,10 @@ final class CalypsoCertificateLegacyPrimeStoreAdapter
         .notNull(pcaPublicKeyModulus, "pcaPublicKeyModulus")
         .isEqual(pcaPublicKeyModulus.length, 256, "pcaPublicKeyModulus length");
 
-    ByteArrayWrapper keyRef = new ByteArrayWrapper(pcaPublicKeyReference);
-    if (publicKeys.containsKey(keyRef)) {
+    String keyRef = HexUtil.toHex(pcaPublicKeyReference);
+    if (pcaPublicKeys.containsKey(keyRef) || caCertificates.containsKey(keyRef)) {
       throw new IllegalStateException(
-          "Public key reference already exists in the store: " + HexUtil.toHex(pcaPublicKeyReference));
+          "Public key reference already exists in the store: " + keyRef);
     }
 
     // TODO: Create RSAPublicKey from modulus and add to store
@@ -107,7 +108,18 @@ final class CalypsoCertificateLegacyPrimeStoreAdapter
    * @since 0.1.0
    */
   RSAPublicKey getPublicKey(byte[] publicKeyReference) {
-    return publicKeys.get(new ByteArrayWrapper(publicKeyReference));
+    String keyRef = HexUtil.toHex(publicKeyReference);
+    // First check PCA public keys
+    RSAPublicKey pcaKey = pcaPublicKeys.get(keyRef);
+    if (pcaKey != null) {
+      return pcaKey;
+    }
+    // Then check CA certificates
+    CaCertificate caCert = caCertificates.get(keyRef);
+    if (caCert != null) {
+      return caCert.getRsaPublicKey();
+    }
+    return null;
   }
 
   /**
@@ -118,42 +130,18 @@ final class CalypsoCertificateLegacyPrimeStoreAdapter
    * @since 0.1.0
    */
   boolean containsPublicKeyReference(byte[] publicKeyReference) {
-    return publicKeys.containsKey(new ByteArrayWrapper(publicKeyReference));
+    String keyRef = HexUtil.toHex(publicKeyReference);
+    return pcaPublicKeys.containsKey(keyRef) || caCertificates.containsKey(keyRef);
   }
 
   /**
-   * Wrapper class for byte arrays to enable their use as map keys.
+   * Retrieves a CA certificate by its key reference.
    *
+   * @param caKeyReference The CA key reference.
+   * @return The CA certificate, or null if not found.
    * @since 0.1.0
    */
-  private static final class ByteArrayWrapper {
-    private final byte[] data;
-    private final int hashCode;
-
-    ByteArrayWrapper(byte[] data) {
-      this.data = data.clone();
-      this.hashCode = Arrays.hashCode(data);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      if (this == obj) {
-        return true;
-      }
-      if (obj == null || getClass() != obj.getClass()) {
-        return false;
-      }
-      ByteArrayWrapper other = (ByteArrayWrapper) obj;
-      return Arrays.equals(data, other.data);
-    }
-
-    @Override
-    public int hashCode() {
-      return hashCode;
-    }
-
-    byte[] getData() {
-      return data.clone();
-    }
+  CaCertificate getCaCertificate(byte[] caKeyReference) {
+    return caCertificates.get(HexUtil.toHex(caKeyReference));
   }
 }

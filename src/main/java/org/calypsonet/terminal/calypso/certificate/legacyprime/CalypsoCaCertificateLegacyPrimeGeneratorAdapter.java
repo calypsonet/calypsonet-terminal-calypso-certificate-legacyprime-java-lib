@@ -30,19 +30,10 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
   private final CalypsoCertificateLegacyPrimeStoreAdapter store;
   private final byte[] issuerPublicKeyReference;
   private final CalypsoCertificateLegacyPrimeSigner signer;
+  private final CaCertificate.Builder certificateBuilder;
 
   private byte[] caPublicKeyReference;
-  private RSAPublicKey caPublicKey;
-  private Integer startYear;
-  private Integer startMonth;
-  private Integer startDay;
-  private Integer endYear;
-  private Integer endMonth;
-  private Integer endDay;
-  private byte[] targetAid;
   private boolean isAidTruncated;
-  private Byte caRights;
-  private Byte caScope;
 
   /**
    * Creates a new generator instance.
@@ -59,6 +50,12 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
     this.store = store;
     this.issuerPublicKeyReference = issuerPublicKeyReference.clone();
     this.signer = signer;
+    // Initialize the certificate builder with known values
+    this.certificateBuilder =
+        CaCertificate.builder()
+            .certType((byte) 0x90)
+            .structureVersion((byte) 0x01)
+            .issuerKeyReference(issuerPublicKeyReference);
   }
 
   /**
@@ -77,7 +74,7 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
         .isEqual(caPublicKey.getPublicExponent().intValue(), 65537, "CA public key exponent");
 
     this.caPublicKeyReference = caPublicKeyReference.clone();
-    this.caPublicKey = caPublicKey;
+    certificateBuilder.caTargetKeyReference(caPublicKeyReference).rsaPublicKey(caPublicKey);
     return this;
   }
 
@@ -93,9 +90,7 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
         .isInRange(month, 1, 99, "month")
         .isInRange(day, 1, 99, "day");
 
-    this.startYear = year;
-    this.startMonth = month;
-    this.startDay = day;
+    certificateBuilder.startDate(encodeDateBcd(year, month, day));
     return this;
   }
 
@@ -111,9 +106,7 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
         .isInRange(month, 1, 99, "month")
         .isInRange(day, 1, 99, "day");
 
-    this.endYear = year;
-    this.endMonth = month;
-    this.endDay = day;
+    certificateBuilder.endDate(encodeDateBcd(year, month, day));
     return this;
   }
 
@@ -137,7 +130,16 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
 
     Assert.getInstance().isTrue(!allZeros, "AID cannot contain only zero bytes");
 
-    this.targetAid = aid.clone();
+    // Prepare padded AID value
+    byte caTargetAidSize = (byte) aid.length;
+    byte[] caTargetAidValue = new byte[16];
+    System.arraycopy(aid, 0, caTargetAidValue, 0, aid.length);
+
+    certificateBuilder
+        .caTargetAidSize(caTargetAidSize)
+        .caTargetAidValue(caTargetAidValue)
+        .caOperatingMode(isTruncated ? (byte) 1 : (byte) 0);
+
     this.isAidTruncated = isTruncated;
     return this;
   }
@@ -160,7 +162,7 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
       throw new IllegalArgumentException("CA rights value %11 is reserved for future use");
     }
 
-    this.caRights = caRights;
+    certificateBuilder.caRights(caRights);
     return this;
   }
 
@@ -177,7 +179,7 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
           "CA scope must be 0x00 (not specified), 0x01 (limited), or 0xFF (full)");
     }
 
-    this.caScope = caScope;
+    certificateBuilder.caScope(caScope);
     return this;
   }
 
@@ -189,7 +191,7 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
   @Override
   public byte[] generate() {
     // Validate required parameters
-    if (caPublicKeyReference == null || caPublicKey == null) {
+    if (caPublicKeyReference == null) {
       throw new IllegalStateException("CA public key must be set");
     }
 
@@ -200,11 +202,42 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
               + HexUtil.toHex(issuerPublicKeyReference));
     }
 
-    // TODO: Build certificate data structure
-    // TODO: Create recoverable data
-    // TODO: Sign certificate using the signer
-    // TODO: Return 384-byte certificate
+    // TODO: Get issuer certificate from store to retrieve issuer information (caAidSize,
+    // caAidValue, caSerialNumber, caKeyId)
+    // For now, set remaining fields with placeholders
+    certificateBuilder
+        .caAidSize((byte) 0)
+        .caAidValue(new byte[16])
+        .caSerialNumber(new byte[8])
+        .caKeyId(new byte[4])
+        .caRfu1(new byte[4])
+        .caRfu2(new byte[2])
+        .publicKeyHeader(new byte[34]);
 
+    // TODO: Build certificate bytes, sign with signer, and set signature
+    byte[] signature = new byte[256]; // Placeholder
+    certificateBuilder.signature(signature);
+
+    CaCertificate certificate = certificateBuilder.build();
+
+    // TODO: Serialize certificate to 384-byte array
     throw new UnsupportedOperationException("Not yet implemented");
+  }
+
+  /**
+   * Encodes a date in BCD format (YYYYMMDD).
+   *
+   * @param year The year (0-9999).
+   * @param month The month (1-99).
+   * @param day The day (1-99).
+   * @return The encoded date (4 bytes).
+   */
+  private byte[] encodeDateBcd(int year, int month, int day) {
+    byte[] date = new byte[4];
+    date[0] = (byte) ((year / 1000) << 4 | (year / 100) % 10);
+    date[1] = (byte) ((year / 10) % 10 << 4 | year % 10);
+    date[2] = (byte) ((month / 10) << 4 | month % 10);
+    date[3] = (byte) ((day / 10) << 4 | day % 10);
+    return date;
   }
 }
