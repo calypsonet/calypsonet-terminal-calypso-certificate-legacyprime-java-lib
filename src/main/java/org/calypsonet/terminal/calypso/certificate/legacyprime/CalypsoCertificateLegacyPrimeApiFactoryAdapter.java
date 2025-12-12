@@ -1,5 +1,5 @@
 /* **************************************************************************************
- * Copyright (c) 2025 Calypso Networks Association https://calypsonet.org/
+ * Copyright (c) 2024 Calypso Networks Association https://calypsonet.org/
  *
  * See the NOTICE file(s) distributed with this work for additional information
  * regarding copyright ownership.
@@ -11,37 +11,29 @@
  ************************************************************************************** */
 package org.calypsonet.terminal.calypso.certificate.legacyprime;
 
-import calypso.certificate.legacyprime.CalypsoCaCertificateLegacyPrimeGenerator;
-import calypso.certificate.legacyprime.CalypsoCardCertificateLegacyPrimeGenerator;
-import calypso.certificate.legacyprime.CalypsoCertificateLegacyPrimeApiFactory;
-import calypso.certificate.legacyprime.CalypsoCertificateLegacyPrimeStore;
-import calypso.certificate.legacyprime.spi.CalypsoCertificateLegacyPrimeSigner;
+import org.calypsonet.terminal.calypso.certificate.legacyprime.spi.CalypsoCertificateLegacyPrimeSigner;
+import org.eclipse.keyple.core.util.Assert;
+import org.eclipse.keyple.core.util.HexUtil;
 
 /**
  * Adapter implementation of {@link CalypsoCertificateLegacyPrimeApiFactory}.
  *
- * <p>This class provides the implementation for creating Calypso Prime Legacy certificate builders
- * and managing the certificate store.
+ * <p>This class provides factory methods for creating CA and card certificate generators.
  *
  * @since 0.1.0
  */
-public final class CalypsoCertificateLegacyPrimeApiFactoryAdapter
+final class CalypsoCertificateLegacyPrimeApiFactoryAdapter
     implements CalypsoCertificateLegacyPrimeApiFactory {
 
-  private static final CalypsoCertificateLegacyPrimeApiFactoryAdapter INSTANCE =
-      new CalypsoCertificateLegacyPrimeApiFactoryAdapter();
-
-  /** Private constructor for singleton pattern. */
-  private CalypsoCertificateLegacyPrimeApiFactoryAdapter() {}
+  private final CalypsoCertificateLegacyPrimeStoreAdapter store;
 
   /**
-   * Returns the unique instance of this factory.
+   * Creates a new factory instance.
    *
-   * @return A non-null reference.
    * @since 0.1.0
    */
-  public static CalypsoCertificateLegacyPrimeApiFactoryAdapter getInstance() {
-    return INSTANCE;
+  CalypsoCertificateLegacyPrimeApiFactoryAdapter() {
+    this.store = new CalypsoCertificateLegacyPrimeStoreAdapter();
   }
 
   /**
@@ -51,8 +43,7 @@ public final class CalypsoCertificateLegacyPrimeApiFactoryAdapter
    */
   @Override
   public CalypsoCertificateLegacyPrimeStore getCalypsoCertificateLegacyPrimeStore() {
-    // TODO: Implement certificate store
-    throw new UnsupportedOperationException("Not yet implemented");
+    return store;
   }
 
   /**
@@ -63,8 +54,23 @@ public final class CalypsoCertificateLegacyPrimeApiFactoryAdapter
   @Override
   public CalypsoCaCertificateLegacyPrimeGenerator createCalypsoCaCertificateLegacyPrimeGenerator(
       byte[] issuerPublicKeyReference, CalypsoCertificateLegacyPrimeSigner caCertificateSigner) {
-    // TODO: Implement CA certificate generator
-    throw new UnsupportedOperationException("Not yet implemented");
+
+    Assert.getInstance()
+        .notNull(issuerPublicKeyReference, "issuerPublicKeyReference")
+        .notNull(caCertificateSigner, "caCertificateSigner");
+
+    // Check if issuer public key reference exists in store
+    if (!store.containsPublicKeyReference(issuerPublicKeyReference)) {
+      throw new IllegalStateException(
+          "Issuer public key reference not found in store: "
+              + HexUtil.toHex(issuerPublicKeyReference));
+    }
+
+    // Verify that the issuer certificate is valid for signing CA certificates
+    // TODO: Add proper certificate validation logic
+
+    return new CalypsoCaCertificateLegacyPrimeGeneratorAdapter(
+        store, issuerPublicKeyReference, caCertificateSigner);
   }
 
   /**
@@ -77,7 +83,22 @@ public final class CalypsoCertificateLegacyPrimeApiFactoryAdapter
       createCalypsoCardCertificateLegacyPrimeGenerator(
           byte[] issuerPublicKeyReference,
           CalypsoCertificateLegacyPrimeSigner cardCertificateSigner) {
-    // TODO: Implement card certificate generator
-    throw new UnsupportedOperationException("Not yet implemented");
+
+    Assert.getInstance()
+        .notNull(issuerPublicKeyReference, "issuerPublicKeyReference")
+        .notNull(cardCertificateSigner, "cardCertificateSigner");
+
+    // Check if issuer public key reference exists in store
+    if (!store.containsPublicKeyReference(issuerPublicKeyReference)) {
+      throw new IllegalStateException(
+          "Issuer public key reference not found in store: "
+              + HexUtil.toHex(issuerPublicKeyReference));
+    }
+
+    // Verify that the issuer certificate is valid for signing card certificates
+    // TODO: Add proper certificate validation logic
+
+    return new CalypsoCardCertificateLegacyPrimeGeneratorAdapter(
+        store, issuerPublicKeyReference, cardCertificateSigner);
   }
 }
