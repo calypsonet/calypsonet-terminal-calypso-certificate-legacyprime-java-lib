@@ -53,8 +53,8 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
     // Initialize the certificate builder with known values
     this.certificateBuilder =
         CaCertificate.builder()
-            .certType((byte) 0x90)
-            .structureVersion((byte) 0x01)
+            .certType(CertificateConstants.CERT_TYPE_CA)
+            .structureVersion(CertificateConstants.STRUCTURE_VERSION)
             .issuerKeyReference(issuerPublicKeyReference);
   }
 
@@ -68,10 +68,19 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
       byte[] caPublicKeyReference, RSAPublicKey caPublicKey) {
     Assert.getInstance()
         .notNull(caPublicKeyReference, "caPublicKeyReference")
-        .isEqual(caPublicKeyReference.length, 29, "caPublicKeyReference length")
+        .isEqual(
+            caPublicKeyReference.length,
+            CertificateConstants.KEY_REFERENCE_SIZE,
+            "caPublicKeyReference length")
         .notNull(caPublicKey, "caPublicKey")
-        .isEqual(caPublicKey.getModulus().bitLength(), 2048, "CA public key modulus bit length")
-        .isEqual(caPublicKey.getPublicExponent().intValue(), 65537, "CA public key exponent");
+        .isEqual(
+            caPublicKey.getModulus().bitLength(),
+            CertificateConstants.RSA_MODULUS_BIT_LENGTH,
+            "CA public key modulus bit length")
+        .isEqual(
+            caPublicKey.getPublicExponent().intValue(),
+            CertificateConstants.RSA_PUBLIC_EXPONENT,
+            "CA public key exponent");
 
     this.caPublicKeyReference = caPublicKeyReference.clone();
     certificateBuilder.caTargetKeyReference(caPublicKeyReference).rsaPublicKey(caPublicKey);
@@ -117,7 +126,13 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
    */
   @Override
   public CalypsoCaCertificateLegacyPrimeGenerator withTargetAid(byte[] aid, boolean isTruncated) {
-    Assert.getInstance().notNull(aid, "aid").isInRange(aid.length, 5, 16, "aid length");
+    Assert.getInstance()
+        .notNull(aid, "aid")
+        .isInRange(
+            aid.length,
+            CertificateConstants.AID_MIN_LENGTH,
+            CertificateConstants.AID_MAX_LENGTH,
+            "aid length");
 
     // Check if AID contains only zero bytes
     boolean allZeros = true;
@@ -132,7 +147,7 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
 
     // Prepare padded AID value
     byte caTargetAidSize = (byte) aid.length;
-    byte[] caTargetAidValue = new byte[16];
+    byte[] caTargetAidValue = new byte[CertificateConstants.AID_VALUE_SIZE];
     System.arraycopy(aid, 0, caTargetAidValue, 0, aid.length);
 
     certificateBuilder
@@ -152,13 +167,16 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
   @Override
   public CalypsoCaCertificateLegacyPrimeGenerator withCaRights(byte caRights) {
     // Check that bits b7-b4 are 0 (RFU)
-    if ((caRights & 0xF0) != 0) {
+    if ((caRights & CertificateConstants.MASK_HIGH_NIBBLE) != 0) {
       throw new IllegalArgumentException("CA rights bits b7-b4 must be 0 (RFU)");
     }
     // Check that bits b3-b2 and b1-b0 don't have value %11 (RFU)
-    int cardCertRight = (caRights >> 2) & 0x03;
-    int caCertRight = caRights & 0x03;
-    if (cardCertRight == 0x03 || caCertRight == 0x03) {
+    int cardCertRight =
+        (caRights >> CertificateConstants.SHIFT_CARD_CERT_RIGHT)
+            & CertificateConstants.MASK_TWO_BITS;
+    int caCertRight = caRights & CertificateConstants.MASK_TWO_BITS;
+    if (cardCertRight == CertificateConstants.CERT_RIGHT_RFU
+        || caCertRight == CertificateConstants.CERT_RIGHT_RFU) {
       throw new IllegalArgumentException("CA rights value %11 is reserved for future use");
     }
 
@@ -174,7 +192,9 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
   @Override
   public CalypsoCaCertificateLegacyPrimeGenerator withCaScope(byte caScope) {
     // Check that the value is valid
-    if (caScope != 0x00 && caScope != 0x01 && caScope != (byte) 0xFF) {
+    if (caScope != CertificateConstants.CA_SCOPE_NOT_SPECIFIED
+        && caScope != CertificateConstants.CA_SCOPE_SPECIFIC
+        && caScope != CertificateConstants.CA_SCOPE_UNIVERSAL) {
       throw new IllegalArgumentException(
           "CA scope must be 0x00 (not specified), 0x01 (limited), or 0xFF (full)");
     }
@@ -204,13 +224,28 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
 
     // Extract CA information from caPublicKeyReference (29 bytes)
     // Structure: caAidSize (1) + caAidValue (16) + caSerialNumber (8) + caKeyId (4)
-    byte caAidSize = caPublicKeyReference[0];
-    byte[] caAidValue = new byte[16];
-    System.arraycopy(caPublicKeyReference, 1, caAidValue, 0, 16);
-    byte[] caSerialNumber = new byte[8];
-    System.arraycopy(caPublicKeyReference, 17, caSerialNumber, 0, 8);
-    byte[] caKeyId = new byte[4];
-    System.arraycopy(caPublicKeyReference, 25, caKeyId, 0, 4);
+    byte caAidSize = caPublicKeyReference[CertificateConstants.KEY_REF_OFFSET_AID_SIZE];
+    byte[] caAidValue = new byte[CertificateConstants.AID_VALUE_SIZE];
+    System.arraycopy(
+        caPublicKeyReference,
+        CertificateConstants.KEY_REF_OFFSET_AID_VALUE,
+        caAidValue,
+        0,
+        CertificateConstants.AID_VALUE_SIZE);
+    byte[] caSerialNumber = new byte[CertificateConstants.SERIAL_NUMBER_SIZE];
+    System.arraycopy(
+        caPublicKeyReference,
+        CertificateConstants.KEY_REF_OFFSET_SERIAL_NUMBER,
+        caSerialNumber,
+        0,
+        CertificateConstants.SERIAL_NUMBER_SIZE);
+    byte[] caKeyId = new byte[CertificateConstants.KEY_ID_SIZE];
+    System.arraycopy(
+        caPublicKeyReference,
+        CertificateConstants.KEY_REF_OFFSET_KEY_ID,
+        caKeyId,
+        0,
+        CertificateConstants.KEY_ID_SIZE);
 
     // Build the certificate with extracted information
     certificateBuilder
@@ -218,8 +253,8 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
         .caAidValue(caAidValue)
         .caSerialNumber(caSerialNumber)
         .caKeyId(caKeyId)
-        .caRfu1(new byte[4])
-        .caRfu2(new byte[2]);
+        .caRfu1(new byte[CertificateConstants.CA_RFU1_SIZE])
+        .caRfu2(new byte[CertificateConstants.CA_RFU2_SIZE]);
 
     // Extract public key header (first 34 bytes of RSA modulus)
     CaCertificate tempCert = certificateBuilder.build();
@@ -229,11 +264,12 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
     }
 
     byte[] modulus = rsaPublicKey.getModulus().toByteArray();
-    byte[] publicKeyHeader = new byte[34];
+    byte[] publicKeyHeader = new byte[CertificateConstants.PUBLIC_KEY_HEADER_SIZE];
 
     // Handle potential leading zero byte in modulus
     int srcPos = (modulus.length == 257 && modulus[0] == 0) ? 1 : 0;
-    System.arraycopy(modulus, srcPos, publicKeyHeader, 0, 34);
+    System.arraycopy(
+        modulus, srcPos, publicKeyHeader, 0, CertificateConstants.PUBLIC_KEY_HEADER_SIZE);
 
     certificateBuilder.publicKeyHeader(publicKeyHeader);
 
@@ -244,17 +280,22 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
     byte[] signedCertificate = signer.generateSignedCertificate(dataToSign, new byte[0]);
 
     // Extract signature from signed certificate (last 256 bytes)
-    if (signedCertificate.length != dataToSign.length + 256) {
+    if (signedCertificate.length != dataToSign.length + CertificateConstants.RSA_SIGNATURE_SIZE) {
       throw new IllegalStateException(
           "Signed certificate must be "
-              + (dataToSign.length + 256)
+              + (dataToSign.length + CertificateConstants.RSA_SIGNATURE_SIZE)
               + " bytes, got "
               + signedCertificate.length
               + " bytes");
     }
 
-    byte[] signature = new byte[256];
-    System.arraycopy(signedCertificate, dataToSign.length, signature, 0, 256);
+    byte[] signature = new byte[CertificateConstants.RSA_SIGNATURE_SIZE];
+    System.arraycopy(
+        signedCertificate,
+        dataToSign.length,
+        signature,
+        0,
+        CertificateConstants.RSA_SIGNATURE_SIZE);
 
     certificateBuilder.signature(signature);
 

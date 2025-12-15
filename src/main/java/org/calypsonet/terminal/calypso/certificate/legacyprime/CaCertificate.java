@@ -287,7 +287,7 @@ final class CaCertificate {
    * @since 0.1.0
    */
   byte[] toBytesForSigning() {
-    byte[] data = new byte[128];
+    byte[] data = new byte[CertificateConstants.CA_DATA_FOR_SIGNING_SIZE];
     int offset = 0;
 
     // KCertType (1 byte)
@@ -297,22 +297,23 @@ final class CaCertificate {
     data[offset++] = structureVersion;
 
     // KCertIssuerKeyReference (29 bytes)
-    System.arraycopy(issuerKeyReference, 0, data, offset, 29);
-    offset += 29;
+    System.arraycopy(issuerKeyReference, 0, data, offset, CertificateConstants.KEY_REFERENCE_SIZE);
+    offset += CertificateConstants.KEY_REFERENCE_SIZE;
 
     // KCertCaTargetKeyReference (29 bytes)
-    System.arraycopy(caTargetKeyReference, 0, data, offset, 29);
-    offset += 29;
+    System.arraycopy(
+        caTargetKeyReference, 0, data, offset, CertificateConstants.KEY_REFERENCE_SIZE);
+    offset += CertificateConstants.KEY_REFERENCE_SIZE;
 
     // KCertStartDate (4 bytes)
     if (startDate != null) {
-      System.arraycopy(startDate, 0, data, offset, 4);
+      System.arraycopy(startDate, 0, data, offset, CertificateConstants.DATE_SIZE);
     }
-    offset += 4;
+    offset += CertificateConstants.DATE_SIZE;
 
     // KCertCaRfu1 (4 bytes)
-    System.arraycopy(caRfu1, 0, data, offset, 4);
-    offset += 4;
+    System.arraycopy(caRfu1, 0, data, offset, CertificateConstants.CA_RFU1_SIZE);
+    offset += CertificateConstants.CA_RFU1_SIZE;
 
     // KCertCaRights (1 byte)
     data[offset++] = caRights;
@@ -322,26 +323,26 @@ final class CaCertificate {
 
     // KCertEndDate (4 bytes)
     if (endDate != null) {
-      System.arraycopy(endDate, 0, data, offset, 4);
+      System.arraycopy(endDate, 0, data, offset, CertificateConstants.DATE_SIZE);
     }
-    offset += 4;
+    offset += CertificateConstants.DATE_SIZE;
 
     // KCertCaTargetAidSize (1 byte)
     data[offset++] = caTargetAidSize;
 
     // KCertCaTargetAidValue (16 bytes)
-    System.arraycopy(caTargetAidValue, 0, data, offset, 16);
-    offset += 16;
+    System.arraycopy(caTargetAidValue, 0, data, offset, CertificateConstants.AID_VALUE_SIZE);
+    offset += CertificateConstants.AID_VALUE_SIZE;
 
     // KCertCaOperatingMode (1 byte)
     data[offset++] = caOperatingMode;
 
     // KCertCaRfu2 (2 bytes)
-    System.arraycopy(caRfu2, 0, data, offset, 2);
-    offset += 2;
+    System.arraycopy(caRfu2, 0, data, offset, CertificateConstants.CA_RFU2_SIZE);
+    offset += CertificateConstants.CA_RFU2_SIZE;
 
     // KCertPublicKeyHeader (34 bytes)
-    System.arraycopy(publicKeyHeader, 0, data, offset, 34);
+    System.arraycopy(publicKeyHeader, 0, data, offset, CertificateConstants.PUBLIC_KEY_HEADER_SIZE);
 
     return data;
   }
@@ -356,16 +357,17 @@ final class CaCertificate {
    * @since 0.1.0
    */
   byte[] toBytes() {
-    byte[] serialized = new byte[384];
+    byte[] serialized = new byte[CertificateConstants.CA_CERTIFICATE_SIZE];
     int offset = 0;
 
     // Copy the data to be signed (128 bytes)
     byte[] dataForSigning = toBytesForSigning();
-    System.arraycopy(dataForSigning, 0, serialized, offset, 128);
-    offset += 128;
+    System.arraycopy(
+        dataForSigning, 0, serialized, offset, CertificateConstants.CA_DATA_FOR_SIGNING_SIZE);
+    offset += CertificateConstants.CA_DATA_FOR_SIGNING_SIZE;
 
     // KCertSignature (256 bytes)
-    System.arraycopy(signature, 0, serialized, offset, 256);
+    System.arraycopy(signature, 0, serialized, offset, CertificateConstants.RSA_SIGNATURE_SIZE);
 
     return serialized;
   }
@@ -382,9 +384,11 @@ final class CaCertificate {
    * @since 0.1.0
    */
   static CaCertificate fromBytes(byte[] caCertificate) {
-    if (caCertificate == null || caCertificate.length != 384) {
+    if (caCertificate == null || caCertificate.length != CertificateConstants.CA_CERTIFICATE_SIZE) {
       throw new IllegalArgumentException(
-          "CA certificate must be 384 bytes, got "
+          "CA certificate must be "
+              + CertificateConstants.CA_CERTIFICATE_SIZE
+              + " bytes, got "
               + (caCertificate == null ? "null" : caCertificate.length));
     }
 
@@ -397,33 +401,50 @@ final class CaCertificate {
     byte structureVersion = caCertificate[offset++];
 
     // KCertIssuerKeyReference (29 bytes)
-    byte[] issuerKeyReference = new byte[29];
-    System.arraycopy(caCertificate, offset, issuerKeyReference, 0, 29);
-    offset += 29;
+    byte[] issuerKeyReference = new byte[CertificateConstants.KEY_REFERENCE_SIZE];
+    System.arraycopy(
+        caCertificate, offset, issuerKeyReference, 0, CertificateConstants.KEY_REFERENCE_SIZE);
+    offset += CertificateConstants.KEY_REFERENCE_SIZE;
 
     // KCertCaTargetKeyReference (29 bytes)
-    byte[] caTargetKeyReference = new byte[29];
-    System.arraycopy(caCertificate, offset, caTargetKeyReference, 0, 29);
-    offset += 29;
+    byte[] caTargetKeyReference = new byte[CertificateConstants.KEY_REFERENCE_SIZE];
+    System.arraycopy(
+        caCertificate, offset, caTargetKeyReference, 0, CertificateConstants.KEY_REFERENCE_SIZE);
+    offset += CertificateConstants.KEY_REFERENCE_SIZE;
 
     // Extract fields from caTargetKeyReference
-    byte caAidSize = caTargetKeyReference[0];
-    byte[] caAidValue = new byte[16];
-    System.arraycopy(caTargetKeyReference, 1, caAidValue, 0, 16);
-    byte[] caSerialNumber = new byte[8];
-    System.arraycopy(caTargetKeyReference, 17, caSerialNumber, 0, 8);
-    byte[] caKeyId = new byte[4];
-    System.arraycopy(caTargetKeyReference, 25, caKeyId, 0, 4);
+    byte caAidSize = caTargetKeyReference[CertificateConstants.KEY_REF_OFFSET_AID_SIZE];
+    byte[] caAidValue = new byte[CertificateConstants.AID_VALUE_SIZE];
+    System.arraycopy(
+        caTargetKeyReference,
+        CertificateConstants.KEY_REF_OFFSET_AID_VALUE,
+        caAidValue,
+        0,
+        CertificateConstants.AID_VALUE_SIZE);
+    byte[] caSerialNumber = new byte[CertificateConstants.SERIAL_NUMBER_SIZE];
+    System.arraycopy(
+        caTargetKeyReference,
+        CertificateConstants.KEY_REF_OFFSET_SERIAL_NUMBER,
+        caSerialNumber,
+        0,
+        CertificateConstants.SERIAL_NUMBER_SIZE);
+    byte[] caKeyId = new byte[CertificateConstants.KEY_ID_SIZE];
+    System.arraycopy(
+        caTargetKeyReference,
+        CertificateConstants.KEY_REF_OFFSET_KEY_ID,
+        caKeyId,
+        0,
+        CertificateConstants.KEY_ID_SIZE);
 
     // KCertStartDate (4 bytes)
-    byte[] startDate = new byte[4];
-    System.arraycopy(caCertificate, offset, startDate, 0, 4);
-    offset += 4;
+    byte[] startDate = new byte[CertificateConstants.DATE_SIZE];
+    System.arraycopy(caCertificate, offset, startDate, 0, CertificateConstants.DATE_SIZE);
+    offset += CertificateConstants.DATE_SIZE;
 
     // KCertCaRfu1 (4 bytes)
-    byte[] caRfu1 = new byte[4];
-    System.arraycopy(caCertificate, offset, caRfu1, 0, 4);
-    offset += 4;
+    byte[] caRfu1 = new byte[CertificateConstants.CA_RFU1_SIZE];
+    System.arraycopy(caCertificate, offset, caRfu1, 0, CertificateConstants.CA_RFU1_SIZE);
+    offset += CertificateConstants.CA_RFU1_SIZE;
 
     // KCertCaRights (1 byte)
     byte caRights = caCertificate[offset++];
@@ -432,34 +453,36 @@ final class CaCertificate {
     byte caScope = caCertificate[offset++];
 
     // KCertEndDate (4 bytes)
-    byte[] endDate = new byte[4];
-    System.arraycopy(caCertificate, offset, endDate, 0, 4);
-    offset += 4;
+    byte[] endDate = new byte[CertificateConstants.DATE_SIZE];
+    System.arraycopy(caCertificate, offset, endDate, 0, CertificateConstants.DATE_SIZE);
+    offset += CertificateConstants.DATE_SIZE;
 
     // KCertCaTargetAidSize (1 byte)
     byte caTargetAidSize = caCertificate[offset++];
 
     // KCertCaTargetAidValue (16 bytes)
-    byte[] caTargetAidValue = new byte[16];
-    System.arraycopy(caCertificate, offset, caTargetAidValue, 0, 16);
-    offset += 16;
+    byte[] caTargetAidValue = new byte[CertificateConstants.AID_VALUE_SIZE];
+    System.arraycopy(
+        caCertificate, offset, caTargetAidValue, 0, CertificateConstants.AID_VALUE_SIZE);
+    offset += CertificateConstants.AID_VALUE_SIZE;
 
     // KCertCaOperatingMode (1 byte)
     byte caOperatingMode = caCertificate[offset++];
 
     // KCertCaRfu2 (2 bytes)
-    byte[] caRfu2 = new byte[2];
-    System.arraycopy(caCertificate, offset, caRfu2, 0, 2);
-    offset += 2;
+    byte[] caRfu2 = new byte[CertificateConstants.CA_RFU2_SIZE];
+    System.arraycopy(caCertificate, offset, caRfu2, 0, CertificateConstants.CA_RFU2_SIZE);
+    offset += CertificateConstants.CA_RFU2_SIZE;
 
     // KCertPublicKeyHeader (34 bytes)
-    byte[] publicKeyHeader = new byte[34];
-    System.arraycopy(caCertificate, offset, publicKeyHeader, 0, 34);
-    offset += 34;
+    byte[] publicKeyHeader = new byte[CertificateConstants.PUBLIC_KEY_HEADER_SIZE];
+    System.arraycopy(
+        caCertificate, offset, publicKeyHeader, 0, CertificateConstants.PUBLIC_KEY_HEADER_SIZE);
+    offset += CertificateConstants.PUBLIC_KEY_HEADER_SIZE;
 
     // KCertSignature (256 bytes)
-    byte[] signature = new byte[256];
-    System.arraycopy(caCertificate, offset, signature, 0, 256);
+    byte[] signature = new byte[CertificateConstants.RSA_SIGNATURE_SIZE];
+    System.arraycopy(caCertificate, offset, signature, 0, CertificateConstants.RSA_SIGNATURE_SIZE);
 
     // Reconstruct the RSA public key from the public key header and signature
     RSAPublicKey rsaPublicKey =

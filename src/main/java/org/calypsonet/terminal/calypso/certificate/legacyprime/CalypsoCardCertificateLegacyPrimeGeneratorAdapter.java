@@ -54,10 +54,10 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
     // Initialize the certificate builder with known values
     this.certificateBuilder =
         CardCertificate.builder()
-            .certType((byte) 0x91)
-            .structureVersion((byte) 0x01)
+            .certType(CertificateConstants.CERT_TYPE_CARD)
+            .structureVersion(CertificateConstants.STRUCTURE_VERSION)
             .issuerKeyReference(issuerPublicKeyReference)
-            .cardIndex(new byte[4]); // Default index = 0
+            .cardIndex(new byte[CertificateConstants.CARD_INDEX_SIZE]); // Default index = 0
   }
 
   /**
@@ -69,7 +69,8 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
   public CalypsoCardCertificateLegacyPrimeGenerator withCardPublicKey(byte[] cardPublicKey) {
     Assert.getInstance()
         .notNull(cardPublicKey, "cardPublicKey")
-        .isEqual(cardPublicKey.length, 64, "cardPublicKey length");
+        .isEqual(
+            cardPublicKey.length, CertificateConstants.ECC_PUBLIC_KEY_SIZE, "cardPublicKey length");
 
     certificateBuilder.eccPublicKey(cardPublicKey);
     cardPublicKeySet = true;
@@ -115,7 +116,13 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
    */
   @Override
   public CalypsoCardCertificateLegacyPrimeGenerator withCardAid(byte[] aid) {
-    Assert.getInstance().notNull(aid, "aid").isInRange(aid.length, 5, 16, "aid length");
+    Assert.getInstance()
+        .notNull(aid, "aid")
+        .isInRange(
+            aid.length,
+            CertificateConstants.AID_MIN_LENGTH,
+            CertificateConstants.AID_MAX_LENGTH,
+            "aid length");
 
     // Check if AID contains only zero bytes
     boolean allZeros = true;
@@ -129,7 +136,7 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
 
     // Prepare padded AID value
     byte cardAidSize = (byte) aid.length;
-    byte[] cardAidValue = new byte[16];
+    byte[] cardAidValue = new byte[CertificateConstants.AID_VALUE_SIZE];
     System.arraycopy(aid, 0, cardAidValue, 0, aid.length);
 
     certificateBuilder.cardAidSize(cardAidSize).cardAidValue(cardAidValue);
@@ -146,7 +153,8 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
   public CalypsoCardCertificateLegacyPrimeGenerator withCardSerialNumber(byte[] serialNumber) {
     Assert.getInstance()
         .notNull(serialNumber, "serialNumber")
-        .isEqual(serialNumber.length, 8, "serialNumber length");
+        .isEqual(
+            serialNumber.length, CertificateConstants.SERIAL_NUMBER_SIZE, "serialNumber length");
 
     certificateBuilder.cardSerialNumber(serialNumber);
     cardSerialNumberSet = true;
@@ -162,7 +170,8 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
   public CalypsoCardCertificateLegacyPrimeGenerator withCardStartupInfo(byte[] startupInfo) {
     Assert.getInstance()
         .notNull(startupInfo, "startupInfo")
-        .isEqual(startupInfo.length, 7, "startupInfo length");
+        .isEqual(
+            startupInfo.length, CertificateConstants.CARD_STARTUP_INFO_SIZE, "startupInfo length");
 
     certificateBuilder.cardInfo(startupInfo);
     cardStartupInfoSet = true;
@@ -177,7 +186,7 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
   @Override
   public CalypsoCardCertificateLegacyPrimeGenerator withIndex(int index) {
     // Encode index as 4-byte big-endian
-    byte[] cardIndex = new byte[4];
+    byte[] cardIndex = new byte[CertificateConstants.CARD_INDEX_SIZE];
     cardIndex[0] = (byte) (index >> 24);
     cardIndex[1] = (byte) (index >> 16);
     cardIndex[2] = (byte) (index >> 8);
@@ -220,13 +229,28 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
 
     // Extract issuer information from issuerPublicKeyReference (29 bytes)
     // Structure: issuerAidSize (1) + issuerAidValue (16) + issuerSerialNumber (8) + issuerKeyId (4)
-    byte issuerAidSize = issuerPublicKeyReference[0];
-    byte[] issuerAidValue = new byte[16];
-    System.arraycopy(issuerPublicKeyReference, 1, issuerAidValue, 0, 16);
-    byte[] issuerSerialNumber = new byte[8];
-    System.arraycopy(issuerPublicKeyReference, 17, issuerSerialNumber, 0, 8);
-    byte[] issuerKeyId = new byte[4];
-    System.arraycopy(issuerPublicKeyReference, 25, issuerKeyId, 0, 4);
+    byte issuerAidSize = issuerPublicKeyReference[CertificateConstants.KEY_REF_OFFSET_AID_SIZE];
+    byte[] issuerAidValue = new byte[CertificateConstants.AID_VALUE_SIZE];
+    System.arraycopy(
+        issuerPublicKeyReference,
+        CertificateConstants.KEY_REF_OFFSET_AID_VALUE,
+        issuerAidValue,
+        0,
+        CertificateConstants.AID_VALUE_SIZE);
+    byte[] issuerSerialNumber = new byte[CertificateConstants.SERIAL_NUMBER_SIZE];
+    System.arraycopy(
+        issuerPublicKeyReference,
+        CertificateConstants.KEY_REF_OFFSET_SERIAL_NUMBER,
+        issuerSerialNumber,
+        0,
+        CertificateConstants.SERIAL_NUMBER_SIZE);
+    byte[] issuerKeyId = new byte[CertificateConstants.KEY_ID_SIZE];
+    System.arraycopy(
+        issuerPublicKeyReference,
+        CertificateConstants.KEY_REF_OFFSET_KEY_ID,
+        issuerKeyId,
+        0,
+        CertificateConstants.KEY_ID_SIZE);
 
     // Build the certificate with extracted information
     certificateBuilder
@@ -235,8 +259,8 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
         .issuerSerialNumber(issuerSerialNumber)
         .issuerKeyId(issuerKeyId)
         .cardRights((byte) 0)
-        .cardRfu(new byte[18])
-        .eccRfu(new byte[124]);
+        .cardRfu(new byte[CertificateConstants.CARD_RFU_SIZE])
+        .eccRfu(new byte[CertificateConstants.ECC_RFU_SIZE]);
 
     // Build recoverable data (222 bytes) for ISO9796-2 signature
     byte[] recoverableData = buildRecoverableData();
@@ -249,17 +273,23 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
         signer.generateSignedCertificate(nonRecoverableData, recoverableData);
 
     // Extract signature from signed certificate (last 256 bytes)
-    if (signedCertificate.length != nonRecoverableData.length + 256) {
+    if (signedCertificate.length
+        != nonRecoverableData.length + CertificateConstants.RSA_SIGNATURE_SIZE) {
       throw new IllegalStateException(
           "Signed certificate must be "
-              + (nonRecoverableData.length + 256)
+              + (nonRecoverableData.length + CertificateConstants.RSA_SIGNATURE_SIZE)
               + " bytes, got "
               + signedCertificate.length
               + " bytes");
     }
 
-    byte[] signature = new byte[256];
-    System.arraycopy(signedCertificate, nonRecoverableData.length, signature, 0, 256);
+    byte[] signature = new byte[CertificateConstants.RSA_SIGNATURE_SIZE];
+    System.arraycopy(
+        signedCertificate,
+        nonRecoverableData.length,
+        signature,
+        0,
+        CertificateConstants.RSA_SIGNATURE_SIZE);
 
     certificateBuilder.signature(signature);
 

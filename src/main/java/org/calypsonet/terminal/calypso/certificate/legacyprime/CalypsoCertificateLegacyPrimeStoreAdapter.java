@@ -51,8 +51,14 @@ final class CalypsoCertificateLegacyPrimeStoreAdapter
     Assert.getInstance()
         .notNull(pcaPublicKeyReference, "pcaPublicKeyReference")
         .notNull(pcaPublicKey, "pcaPublicKey")
-        .isEqual(pcaPublicKey.getModulus().bitLength(), 2048, "PCA public key modulus bit length")
-        .isEqual(pcaPublicKey.getPublicExponent().intValue(), 65537, "PCA public key exponent");
+        .isEqual(
+            pcaPublicKey.getModulus().bitLength(),
+            CertificateConstants.RSA_MODULUS_BIT_LENGTH,
+            "PCA public key modulus bit length")
+        .isEqual(
+            pcaPublicKey.getPublicExponent().intValue(),
+            CertificateConstants.RSA_PUBLIC_EXPONENT,
+            "PCA public key exponent");
 
     String keyRef = HexUtil.toHex(pcaPublicKeyReference);
     checkKeyRefNotExists(keyRef);
@@ -70,7 +76,10 @@ final class CalypsoCertificateLegacyPrimeStoreAdapter
     Assert.getInstance()
         .notNull(pcaPublicKeyReference, "pcaPublicKeyReference")
         .notNull(pcaPublicKeyModulus, "pcaPublicKeyModulus")
-        .isEqual(pcaPublicKeyModulus.length, 256, "pcaPublicKeyModulus length");
+        .isEqual(
+            pcaPublicKeyModulus.length,
+            CertificateConstants.RSA_MODULUS_SIZE,
+            "pcaPublicKeyModulus length");
 
     String keyRef = HexUtil.toHex(pcaPublicKeyReference);
     checkKeyRefNotExists(keyRef);
@@ -88,18 +97,19 @@ final class CalypsoCertificateLegacyPrimeStoreAdapter
   public byte[] addCalypsoCaCertificateLegacyPrime(byte[] caCertificate) {
     Assert.getInstance()
         .notNull(caCertificate, "caCertificate")
-        .isEqual(caCertificate.length, 384, "caCertificate length");
+        .isEqual(
+            caCertificate.length, CertificateConstants.CA_CERTIFICATE_SIZE, "caCertificate length");
 
     // Parse the CA certificate
     CaCertificate certificate = CaCertificate.fromBytes(caCertificate);
 
     // Verify certificate type and version
-    if (certificate.getCertType() != (byte) 0x90) {
+    if (certificate.getCertType() != CertificateConstants.CERT_TYPE_CA) {
       throw new IllegalArgumentException(
           "Invalid certificate type: expected 0x90, got "
               + String.format("%02X", certificate.getCertType()));
     }
-    if (certificate.getStructureVersion() != (byte) 0x01) {
+    if (certificate.getStructureVersion() != CertificateConstants.STRUCTURE_VERSION) {
       throw new IllegalArgumentException(
           "Invalid certificate version: expected 0x01, got "
               + String.format("%02X", certificate.getStructureVersion()));

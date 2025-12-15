@@ -272,42 +272,42 @@ final class CardCertificate {
    * @since 0.1.0
    */
   byte[] getRecoverableDataForSigning() {
-    byte[] data = new byte[222];
+    byte[] data = new byte[CertificateConstants.CARD_RECOVERABLE_DATA_SIZE];
     int offset = 0;
 
     // KCertStartDate (4 bytes)
     if (startDate != null) {
-      System.arraycopy(startDate, 0, data, offset, 4);
+      System.arraycopy(startDate, 0, data, offset, CertificateConstants.DATE_SIZE);
     }
-    offset += 4;
+    offset += CertificateConstants.DATE_SIZE;
 
     // KCertEndDate (4 bytes)
     if (endDate != null) {
-      System.arraycopy(endDate, 0, data, offset, 4);
+      System.arraycopy(endDate, 0, data, offset, CertificateConstants.DATE_SIZE);
     }
-    offset += 4;
+    offset += CertificateConstants.DATE_SIZE;
 
     // KCertCardRights (1 byte)
     data[offset++] = cardRights;
 
     // KCertCardInfo (7 bytes)
     if (cardInfo != null) {
-      System.arraycopy(cardInfo, 0, data, offset, 7);
+      System.arraycopy(cardInfo, 0, data, offset, CertificateConstants.CARD_STARTUP_INFO_SIZE);
     }
-    offset += 7;
+    offset += CertificateConstants.CARD_STARTUP_INFO_SIZE;
 
     // KCertCardRfu (18 bytes)
-    System.arraycopy(cardRfu, 0, data, offset, 18);
-    offset += 18;
+    System.arraycopy(cardRfu, 0, data, offset, CertificateConstants.CARD_RFU_SIZE);
+    offset += CertificateConstants.CARD_RFU_SIZE;
 
     // KCertEccPublicKey (64 bytes)
     if (eccPublicKey != null) {
-      System.arraycopy(eccPublicKey, 0, data, offset, 64);
+      System.arraycopy(eccPublicKey, 0, data, offset, CertificateConstants.ECC_PUBLIC_KEY_SIZE);
     }
-    offset += 64;
+    offset += CertificateConstants.ECC_PUBLIC_KEY_SIZE;
 
     // KCertEccRfu (124 bytes)
-    System.arraycopy(eccRfu, 0, data, offset, 124);
+    System.arraycopy(eccRfu, 0, data, offset, CertificateConstants.ECC_RFU_SIZE);
 
     return data;
   }
@@ -322,7 +322,7 @@ final class CardCertificate {
    * @since 0.1.0
    */
   byte[] toBytesForSigning() {
-    byte[] data = new byte[60];
+    byte[] data = new byte[CertificateConstants.CARD_NON_RECOVERABLE_DATA_SIZE];
     int offset = 0;
 
     // KCertType (1 byte)
@@ -332,24 +332,24 @@ final class CardCertificate {
     data[offset++] = structureVersion;
 
     // KCertIssuerKeyReference (29 bytes)
-    System.arraycopy(issuerKeyReference, 0, data, offset, 29);
-    offset += 29;
+    System.arraycopy(issuerKeyReference, 0, data, offset, CertificateConstants.KEY_REFERENCE_SIZE);
+    offset += CertificateConstants.KEY_REFERENCE_SIZE;
 
     // KCertCardAidSize (1 byte)
     data[offset++] = cardAidSize;
 
     // KCertCardAidValue (16 bytes)
-    System.arraycopy(cardAidValue, 0, data, offset, 16);
-    offset += 16;
+    System.arraycopy(cardAidValue, 0, data, offset, CertificateConstants.AID_VALUE_SIZE);
+    offset += CertificateConstants.AID_VALUE_SIZE;
 
     // KCertCardSerialNumber (8 bytes)
     if (cardSerialNumber != null) {
-      System.arraycopy(cardSerialNumber, 0, data, offset, 8);
+      System.arraycopy(cardSerialNumber, 0, data, offset, CertificateConstants.SERIAL_NUMBER_SIZE);
     }
-    offset += 8;
+    offset += CertificateConstants.SERIAL_NUMBER_SIZE;
 
     // KCertCardIndex (4 bytes)
-    System.arraycopy(cardIndex, 0, data, offset, 4);
+    System.arraycopy(cardIndex, 0, data, offset, CertificateConstants.CARD_INDEX_SIZE);
 
     return data;
   }
@@ -364,16 +364,17 @@ final class CardCertificate {
    * @since 0.1.0
    */
   byte[] toBytes() {
-    byte[] serialized = new byte[316];
+    byte[] serialized = new byte[CertificateConstants.CARD_CERTIFICATE_SIZE];
     int offset = 0;
 
     // Copy the non-recoverable data (60 bytes)
     byte[] dataForSigning = toBytesForSigning();
-    System.arraycopy(dataForSigning, 0, serialized, offset, 60);
-    offset += 60;
+    System.arraycopy(
+        dataForSigning, 0, serialized, offset, CertificateConstants.CARD_NON_RECOVERABLE_DATA_SIZE);
+    offset += CertificateConstants.CARD_NON_RECOVERABLE_DATA_SIZE;
 
     // KCertSignature (256 bytes)
-    System.arraycopy(signature, 0, serialized, offset, 256);
+    System.arraycopy(signature, 0, serialized, offset, CertificateConstants.RSA_SIGNATURE_SIZE);
 
     return serialized;
   }

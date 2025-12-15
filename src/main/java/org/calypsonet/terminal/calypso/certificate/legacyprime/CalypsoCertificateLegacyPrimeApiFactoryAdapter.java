@@ -71,13 +71,13 @@ final class CalypsoCertificateLegacyPrimeApiFactoryAdapter
     if (issuerCert != null) {
       // Check CA rights - bits b1-b0 for CA certificate signing
       byte caRights = issuerCert.getCaRights();
-      int caCertRight = caRights & 0x03; // Extract bits b1-b0
+      int caCertRight = caRights & CertificateConstants.MASK_TWO_BITS; // Extract bits b1-b0
 
       // %00 = CA cert signing right not specified
       // %01 = Shall not sign CA cert
       // %10 = May sign CA cert
       // %11 = RFU
-      if (caCertRight == 0x01) {
+      if (caCertRight == CertificateConstants.CERT_RIGHT_SHALL_NOT_SIGN) {
         throw new IllegalStateException(
             "Issuer certificate does not have the right to sign CA certificates");
       }
@@ -115,13 +115,15 @@ final class CalypsoCertificateLegacyPrimeApiFactoryAdapter
     if (issuerCert != null) {
       // Check CA rights - bits b3-b2 for Card certificate signing
       byte caRights = issuerCert.getCaRights();
-      int cardCertRight = (caRights >> 2) & 0x03; // Extract bits b3-b2
+      int cardCertRight =
+          (caRights >> CertificateConstants.SHIFT_CARD_CERT_RIGHT)
+              & CertificateConstants.MASK_TWO_BITS; // Extract bits b3-b2
 
       // %00 = Card cert signing right not specified
       // %01 = Shall not sign Card cert
       // %10 = May sign Card cert
       // %11 = RFU
-      if (cardCertRight == 0x01) {
+      if (cardCertRight == CertificateConstants.CERT_RIGHT_SHALL_NOT_SIGN) {
         throw new IllegalStateException(
             "Issuer certificate does not have the right to sign card certificates");
       }

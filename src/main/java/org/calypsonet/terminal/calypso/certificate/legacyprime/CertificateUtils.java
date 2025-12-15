@@ -47,8 +47,14 @@ final class CertificateUtils {
   static void checkRSA2048PublicKey(RSAPublicKey rsaPublicKey) {
     Assert.getInstance()
         .notNull(rsaPublicKey, "rsaPublicKey")
-        .isEqual(rsaPublicKey.getModulus().bitLength(), 2048, "RSA public key modulus bit length")
-        .isEqual(rsaPublicKey.getPublicExponent().intValue(), 65537, "RSA public key exponent");
+        .isEqual(
+            rsaPublicKey.getModulus().bitLength(),
+            CertificateConstants.RSA_MODULUS_BIT_LENGTH,
+            "RSA public key modulus bit length")
+        .isEqual(
+            rsaPublicKey.getPublicExponent().intValue(),
+            CertificateConstants.RSA_PUBLIC_EXPONENT,
+            "RSA public key exponent");
   }
 
   /**
@@ -64,7 +70,7 @@ final class CertificateUtils {
   static RSAPublicKey generateRSAPublicKeyFromModulus(byte[] modulus) {
     try {
       BigInteger modulusBigInt = new BigInteger(1, modulus);
-      BigInteger publicExponent = BigInteger.valueOf(65537);
+      BigInteger publicExponent = BigInteger.valueOf(CertificateConstants.RSA_PUBLIC_EXPONENT);
 
       RSAPublicKeySpec keySpec = new RSAPublicKeySpec(modulusBigInt, publicExponent);
       KeyFactory keyFactory = KeyFactory.getInstance("RSA");
@@ -92,11 +98,16 @@ final class CertificateUtils {
       byte[] publicKeyHeader, byte[] signature) {
     try {
       // The modulus is 256 bytes total: 34 bytes from header + 222 bytes from signature
-      byte[] modulus = new byte[256];
-      System.arraycopy(publicKeyHeader, 0, modulus, 0, 34);
+      byte[] modulus = new byte[CertificateConstants.RSA_MODULUS_SIZE];
+      System.arraycopy(publicKeyHeader, 0, modulus, 0, CertificateConstants.PUBLIC_KEY_HEADER_SIZE);
       // The last 222 bytes of the signature encode the remaining modulus bytes
       // (This is part of the RSA signature scheme where data is encoded in the signature)
-      System.arraycopy(signature, 34, modulus, 34, 222);
+      System.arraycopy(
+          signature,
+          CertificateConstants.PUBLIC_KEY_HEADER_SIZE,
+          modulus,
+          CertificateConstants.PUBLIC_KEY_HEADER_SIZE,
+          CertificateConstants.RSA_MODULUS_IN_SIGNATURE_SIZE);
 
       return generateRSAPublicKeyFromModulus(modulus);
     } catch (Exception e) {
