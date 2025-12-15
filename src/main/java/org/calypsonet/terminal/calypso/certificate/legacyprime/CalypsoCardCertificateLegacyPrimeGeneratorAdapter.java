@@ -31,6 +31,11 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
   private final CalypsoCertificateLegacyPrimeSigner signer;
   private final CardCertificate.Builder certificateBuilder;
 
+  private boolean cardPublicKeySet = false;
+  private boolean cardAidSet = false;
+  private boolean cardSerialNumberSet = false;
+  private boolean cardStartupInfoSet = false;
+
   /**
    * Creates a new generator instance.
    *
@@ -66,6 +71,7 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
     Assert.getInstance().isEqual(cardPublicKey.length, 64, "cardPublicKey length");
 
     certificateBuilder.eccPublicKey(cardPublicKey);
+    cardPublicKeySet = true;
     return this;
   }
 
@@ -125,6 +131,7 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
     System.arraycopy(aid, 0, cardAidValue, 0, aid.length);
 
     certificateBuilder.cardAidSize(cardAidSize).cardAidValue(cardAidValue);
+    cardAidSet = true;
     return this;
   }
 
@@ -139,6 +146,7 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
     Assert.getInstance().isEqual(serialNumber.length, 8, "serialNumber length");
 
     certificateBuilder.cardSerialNumber(serialNumber);
+    cardSerialNumberSet = true;
     return this;
   }
 
@@ -153,6 +161,7 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
     Assert.getInstance().isEqual(startupInfo.length, 7, "startupInfo length");
 
     certificateBuilder.cardInfo(startupInfo);
+    cardStartupInfoSet = true;
     return this;
   }
 
@@ -181,6 +190,23 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
    */
   @Override
   public byte[] generate() {
+    // Validate required parameters
+    if (!cardPublicKeySet) {
+      throw new IllegalStateException("Card public key must be set");
+    }
+
+    if (!cardAidSet) {
+      throw new IllegalStateException("Card AID must be set");
+    }
+
+    if (!cardSerialNumberSet) {
+      throw new IllegalStateException("Card serial number must be set");
+    }
+
+    if (!cardStartupInfoSet) {
+      throw new IllegalStateException("Card startup info must be set");
+    }
+
     // Verify that issuer public key exists in store
     if (!store.containsPublicKeyReference(issuerPublicKeyReference)) {
       throw new IllegalStateException(
@@ -188,27 +214,200 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
               + HexUtil.toHex(issuerPublicKeyReference));
     }
 
-    // TODO: Get issuer certificate from store to retrieve issuer information (issuerAidSize,
-    // issuerAidValue, issuerSerialNumber, issuerKeyId)
-    // For now, set remaining fields with placeholders
+    // Extract issuer information from issuerPublicKeyReference (29 bytes)
+    // Structure: issuerAidSize (1) + issuerAidValue (16) + issuerSerialNumber (8) + issuerKeyId (4)
+    byte issuerAidSize = issuerPublicKeyReference[0];
+    byte[] issuerAidValue = new byte[16];
+    System.arraycopy(issuerPublicKeyReference, 1, issuerAidValue, 0, 16);
+    byte[] issuerSerialNumber = new byte[8];
+    System.arraycopy(issuerPublicKeyReference, 17, issuerSerialNumber, 0, 8);
+    byte[] issuerKeyId = new byte[4];
+    System.arraycopy(issuerPublicKeyReference, 25, issuerKeyId, 0, 4);
+
+    // Build the certificate with extracted information
     certificateBuilder
-        .issuerAidSize((byte) 0)
-        .issuerAidValue(new byte[16])
-        .issuerSerialNumber(new byte[8])
-        .issuerKeyId(new byte[4])
+        .issuerAidSize(issuerAidSize)
+        .issuerAidValue(issuerAidValue)
+        .issuerSerialNumber(issuerSerialNumber)
+        .issuerKeyId(issuerKeyId)
         .cardRights((byte) 0)
         .cardRfu(new byte[18])
         .eccRfu(new byte[124]);
 
-    // TODO: Build certificate bytes, create recoverable data, sign with signer in ISO9796-2
-    // recoverable mode
-    byte[] signature = new byte[256]; // Placeholder
+    // Build recoverable data (222 bytes) for ISO9796-2 signature
+    byte[] recoverableData = buildRecoverableData();
+
+    // Build the non-recoverable data for signature (60 bytes)
+    byte[] nonRecoverableData = buildNonRecoverableData();
+
+    // Sign using ISO9796-2 with recoverable data
+    byte[] signedCertificate =
+        signer.generateSignedCertificate(nonRecoverableData, recoverableData);
+
+    // Extract signature from signed certificate (last 256 bytes)
+    if (signedCertificate.length != nonRecoverableData.length + 256) {
+      throw new IllegalStateException(
+          "Signed certificate must be "
+              + (nonRecoverableData.length + 256)
+              + " bytes, got "
+              + signedCertificate.length
+              + " bytes");
+    }
+
+    byte[] signature = new byte[256];
+    System.arraycopy(signedCertificate, nonRecoverableData.length, signature, 0, 256);
+
     certificateBuilder.signature(signature);
 
+    // Build the final certificate
     CardCertificate certificate = certificateBuilder.build();
 
-    // TODO: Serialize certificate to 316-byte array
-    throw new UnsupportedOperationException("Not yet implemented");
+    // Serialize certificate to 316-byte array
+    return serializeCardCertificate(certificate);
+  }
+
+  /**
+   * Builds the recoverable data (222 bytes) for ISO9796-2 signature.
+   *
+   * @return The recoverable data.
+   */
+  private byte[] buildRecoverableData() {
+    CardCertificate tempCert = certificateBuilder.build();
+    byte[] data = new byte[222];
+    int offset = 0;
+
+    // KCertStartDate (4 bytes)
+    byte[] startDate = tempCert.getStartDate();
+    if (startDate != null) {
+      System.arraycopy(startDate, 0, data, offset, 4);
+    }
+    offset += 4;
+
+    // KCertEndDate (4 bytes)
+    byte[] endDate = tempCert.getEndDate();
+    if (endDate != null) {
+      System.arraycopy(endDate, 0, data, offset, 4);
+    }
+    offset += 4;
+
+    // KCertCardRights (1 byte)
+    data[offset++] = tempCert.getCardRights();
+
+    // KCertCardInfo (7 bytes)
+    byte[] cardInfo = tempCert.getCardInfo();
+    if (cardInfo != null) {
+      System.arraycopy(cardInfo, 0, data, offset, 7);
+    }
+    offset += 7;
+
+    // KCertCardRfu (18 bytes)
+    byte[] cardRfu = tempCert.getCardRfu();
+    System.arraycopy(cardRfu, 0, data, offset, 18);
+    offset += 18;
+
+    // KCertEccPublicKey (64 bytes)
+    byte[] eccPublicKey = tempCert.getEccPublicKey();
+    if (eccPublicKey != null) {
+      System.arraycopy(eccPublicKey, 0, data, offset, 64);
+    }
+    offset += 64;
+
+    // KCertEccRfu (124 bytes)
+    byte[] eccRfu = tempCert.getEccRfu();
+    System.arraycopy(eccRfu, 0, data, offset, 124);
+
+    return data;
+  }
+
+  /**
+   * Builds the non-recoverable data (60 bytes) for ISO9796-2 signature.
+   *
+   * @return The non-recoverable data.
+   */
+  private byte[] buildNonRecoverableData() {
+    CardCertificate tempCert = certificateBuilder.build();
+    byte[] data = new byte[60];
+    int offset = 0;
+
+    // KCertType (1 byte)
+    data[offset++] = tempCert.getCertType();
+
+    // KCertStructureVersion (1 byte)
+    data[offset++] = tempCert.getStructureVersion();
+
+    // KCertIssuerKeyReference (29 bytes)
+    byte[] issuerKeyRef = tempCert.getIssuerKeyReference();
+    System.arraycopy(issuerKeyRef, 0, data, offset, 29);
+    offset += 29;
+
+    // KCertCardAidSize (1 byte)
+    data[offset++] = tempCert.getCardAidSize();
+
+    // KCertCardAidValue (16 bytes)
+    byte[] cardAidValue = tempCert.getCardAidValue();
+    System.arraycopy(cardAidValue, 0, data, offset, 16);
+    offset += 16;
+
+    // KCertCardSerialNumber (8 bytes)
+    byte[] cardSerialNumber = tempCert.getCardSerialNumber();
+    if (cardSerialNumber != null) {
+      System.arraycopy(cardSerialNumber, 0, data, offset, 8);
+    }
+    offset += 8;
+
+    // KCertCardIndex (4 bytes)
+    byte[] cardIndex = tempCert.getCardIndex();
+    System.arraycopy(cardIndex, 0, data, offset, 4);
+
+    return data;
+  }
+
+  /**
+   * Serializes the Card certificate to a 316-byte array.
+   *
+   * @param certificate The certificate to serialize.
+   * @return The serialized certificate.
+   */
+  private byte[] serializeCardCertificate(CardCertificate certificate) {
+    byte[] serialized = new byte[316];
+    int offset = 0;
+
+    // KCertType (1 byte)
+    serialized[offset++] = certificate.getCertType();
+
+    // KCertStructureVersion (1 byte)
+    serialized[offset++] = certificate.getStructureVersion();
+
+    // KCertIssuerKeyReference (29 bytes)
+    byte[] issuerKeyRef = certificate.getIssuerKeyReference();
+    System.arraycopy(issuerKeyRef, 0, serialized, offset, 29);
+    offset += 29;
+
+    // KCertCardAidSize (1 byte)
+    serialized[offset++] = certificate.getCardAidSize();
+
+    // KCertCardAidValue (16 bytes)
+    byte[] cardAidValue = certificate.getCardAidValue();
+    System.arraycopy(cardAidValue, 0, serialized, offset, 16);
+    offset += 16;
+
+    // KCertCardSerialNumber (8 bytes)
+    byte[] cardSerialNumber = certificate.getCardSerialNumber();
+    if (cardSerialNumber != null) {
+      System.arraycopy(cardSerialNumber, 0, serialized, offset, 8);
+    }
+    offset += 8;
+
+    // KCertCardIndex (4 bytes)
+    byte[] cardIndex = certificate.getCardIndex();
+    System.arraycopy(cardIndex, 0, serialized, offset, 4);
+    offset += 4;
+
+    // KCertSignature (256 bytes)
+    byte[] signature = certificate.getSignature();
+    System.arraycopy(signature, 0, serialized, offset, 256);
+
+    return serialized;
   }
 
   /**

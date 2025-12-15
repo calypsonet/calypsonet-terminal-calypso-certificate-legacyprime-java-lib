@@ -67,7 +67,22 @@ final class CalypsoCertificateLegacyPrimeApiFactoryAdapter
     }
 
     // Verify that the issuer certificate is valid for signing CA certificates
-    // TODO: Add proper certificate validation logic
+    CaCertificate issuerCert = store.getCaCertificate(issuerPublicKeyReference);
+    if (issuerCert != null) {
+      // Check CA rights - bits b1-b0 for CA certificate signing
+      byte caRights = issuerCert.getCaRights();
+      int caCertRight = caRights & 0x03; // Extract bits b1-b0
+
+      // %00 = CA cert signing right not specified
+      // %01 = Shall not sign CA cert
+      // %10 = May sign CA cert
+      // %11 = RFU
+      if (caCertRight == 0x01) {
+        throw new IllegalStateException(
+            "Issuer certificate does not have the right to sign CA certificates");
+      }
+    }
+    // If issuerCert is null, it means we're using a PCA public key, which is allowed
 
     return new CalypsoCaCertificateLegacyPrimeGeneratorAdapter(
         store, issuerPublicKeyReference, caCertificateSigner);
@@ -96,7 +111,22 @@ final class CalypsoCertificateLegacyPrimeApiFactoryAdapter
     }
 
     // Verify that the issuer certificate is valid for signing card certificates
-    // TODO: Add proper certificate validation logic
+    CaCertificate issuerCert = store.getCaCertificate(issuerPublicKeyReference);
+    if (issuerCert != null) {
+      // Check CA rights - bits b3-b2 for Card certificate signing
+      byte caRights = issuerCert.getCaRights();
+      int cardCertRight = (caRights >> 2) & 0x03; // Extract bits b3-b2
+
+      // %00 = Card cert signing right not specified
+      // %01 = Shall not sign Card cert
+      // %10 = May sign Card cert
+      // %11 = RFU
+      if (cardCertRight == 0x01) {
+        throw new IllegalStateException(
+            "Issuer certificate does not have the right to sign card certificates");
+      }
+    }
+    // If issuerCert is null, it means we're using a PCA public key, which is allowed
 
     return new CalypsoCardCertificateLegacyPrimeGeneratorAdapter(
         store, issuerPublicKeyReference, cardCertificateSigner);

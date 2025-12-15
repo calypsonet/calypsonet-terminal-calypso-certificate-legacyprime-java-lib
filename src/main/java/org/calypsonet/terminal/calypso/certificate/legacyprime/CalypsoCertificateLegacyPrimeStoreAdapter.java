@@ -11,7 +11,10 @@
  ************************************************************************************** */
 package org.calypsonet.terminal.calypso.certificate.legacyprime;
 
+import java.math.BigInteger;
+import java.security.KeyFactory;
 import java.security.interfaces.RSAPublicKey;
+import java.security.spec.RSAPublicKeySpec;
 import java.util.HashMap;
 import java.util.Map;
 import org.eclipse.keyple.core.util.Assert;
@@ -81,8 +84,19 @@ final class CalypsoCertificateLegacyPrimeStoreAdapter
           "Public key reference already exists in the store: " + keyRef);
     }
 
-    // TODO: Create RSAPublicKey from modulus and add to store
-    throw new UnsupportedOperationException("Not yet implemented");
+    try {
+      // Create RSA public key from modulus (exponent is always 65537 = 0x010001)
+      BigInteger modulus = new BigInteger(1, pcaPublicKeyModulus);
+      BigInteger exponent = BigInteger.valueOf(65537);
+
+      RSAPublicKeySpec keySpec = new RSAPublicKeySpec(modulus, exponent);
+      KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+      RSAPublicKey publicKey = (RSAPublicKey) keyFactory.generatePublic(keySpec);
+
+      pcaPublicKeys.put(keyRef, publicKey);
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Failed to create RSA public key from modulus", e);
+    }
   }
 
   /**
@@ -96,8 +110,274 @@ final class CalypsoCertificateLegacyPrimeStoreAdapter
         .notNull(caCertificate, "caCertificate")
         .isEqual(caCertificate.length, 384, "caCertificate length");
 
-    // TODO: Parse certificate, verify signature, extract public key reference and add to store
-    throw new UnsupportedOperationException("Not yet implemented");
+    // Parse the CA certificate
+    CaCertificate certificate = parseCaCertificate(caCertificate);
+
+    // Verify certificate type and version
+    if (certificate.getCertType() != (byte) 0x90) {
+      throw new IllegalArgumentException(
+          "Invalid certificate type: expected 0x90, got "
+              + String.format("%02X", certificate.getCertType()));
+    }
+    if (certificate.getStructureVersion() != (byte) 0x01) {
+      throw new IllegalArgumentException(
+          "Invalid certificate version: expected 0x01, got "
+              + String.format("%02X", certificate.getStructureVersion()));
+    }
+
+    // Verify the signature using the issuer's public key
+    byte[] issuerKeyRef = certificate.getIssuerKeyReference();
+    RSAPublicKey issuerPublicKey = getPublicKey(issuerKeyRef);
+    if (issuerPublicKey == null) {
+      throw new IllegalStateException(
+          "Issuer public key not found in store: " + HexUtil.toHex(issuerKeyRef));
+    }
+
+    // Build the data that was signed (128 bytes)
+    byte[] dataToVerify = buildCaCertificateDataForVerification(certificate);
+
+    // Verify the signature
+    if (!verifySignature(issuerPublicKey, dataToVerify, certificate.getSignature())) {
+      throw new IllegalArgumentException("CA certificate signature verification failed");
+    }
+
+    // Extract the CA target key reference
+    byte[] caTargetKeyRef = certificate.getCaTargetKeyReference();
+    String keyRef = HexUtil.toHex(caTargetKeyRef);
+
+    // Check if the key reference already exists
+    if (pcaPublicKeys.containsKey(keyRef) || caCertificates.containsKey(keyRef)) {
+      throw new IllegalStateException(
+          "Public key reference already exists in the store: " + keyRef);
+    }
+
+    // Add the certificate to the store
+    caCertificates.put(keyRef, certificate);
+
+    return caTargetKeyRef;
+  }
+
+  /**
+   * Parses a CA certificate from its byte array representation.
+   *
+   * @param caCertificate The 384-byte certificate.
+   * @return The parsed CA certificate.
+   */
+  private CaCertificate parseCaCertificate(byte[] caCertificate) {
+    int offset = 0;
+
+    // KCertType (1 byte)
+    byte certType = caCertificate[offset++];
+
+    // KCertStructureVersion (1 byte)
+    byte structureVersion = caCertificate[offset++];
+
+    // KCertIssuerKeyReference (29 bytes)
+    byte[] issuerKeyReference = new byte[29];
+    System.arraycopy(caCertificate, offset, issuerKeyReference, 0, 29);
+    offset += 29;
+
+    // KCertCaTargetKeyReference (29 bytes)
+    byte[] caTargetKeyReference = new byte[29];
+    System.arraycopy(caCertificate, offset, caTargetKeyReference, 0, 29);
+    offset += 29;
+
+    // Extract fields from caTargetKeyReference
+    byte caAidSize = caTargetKeyReference[0];
+    byte[] caAidValue = new byte[16];
+    System.arraycopy(caTargetKeyReference, 1, caAidValue, 0, 16);
+    byte[] caSerialNumber = new byte[8];
+    System.arraycopy(caTargetKeyReference, 17, caSerialNumber, 0, 8);
+    byte[] caKeyId = new byte[4];
+    System.arraycopy(caTargetKeyReference, 25, caKeyId, 0, 4);
+
+    // KCertStartDate (4 bytes)
+    byte[] startDate = new byte[4];
+    System.arraycopy(caCertificate, offset, startDate, 0, 4);
+    offset += 4;
+
+    // KCertCaRfu1 (4 bytes)
+    byte[] caRfu1 = new byte[4];
+    System.arraycopy(caCertificate, offset, caRfu1, 0, 4);
+    offset += 4;
+
+    // KCertCaRights (1 byte)
+    byte caRights = caCertificate[offset++];
+
+    // KCertCaScope (1 byte)
+    byte caScope = caCertificate[offset++];
+
+    // KCertEndDate (4 bytes)
+    byte[] endDate = new byte[4];
+    System.arraycopy(caCertificate, offset, endDate, 0, 4);
+    offset += 4;
+
+    // KCertCaTargetAidSize (1 byte)
+    byte caTargetAidSize = caCertificate[offset++];
+
+    // KCertCaTargetAidValue (16 bytes)
+    byte[] caTargetAidValue = new byte[16];
+    System.arraycopy(caCertificate, offset, caTargetAidValue, 0, 16);
+    offset += 16;
+
+    // KCertCaOperatingMode (1 byte)
+    byte caOperatingMode = caCertificate[offset++];
+
+    // KCertCaRfu2 (2 bytes)
+    byte[] caRfu2 = new byte[2];
+    System.arraycopy(caCertificate, offset, caRfu2, 0, 2);
+    offset += 2;
+
+    // KCertPublicKeyHeader (34 bytes)
+    byte[] publicKeyHeader = new byte[34];
+    System.arraycopy(caCertificate, offset, publicKeyHeader, 0, 34);
+    offset += 34;
+
+    // KCertSignature (256 bytes)
+    byte[] signature = new byte[256];
+    System.arraycopy(caCertificate, offset, signature, 0, 256);
+
+    // Reconstruct the RSA public key from the public key header
+    RSAPublicKey rsaPublicKey = reconstructRsaPublicKey(publicKeyHeader, signature);
+
+    return CaCertificate.builder()
+        .certType(certType)
+        .structureVersion(structureVersion)
+        .issuerKeyReference(issuerKeyReference)
+        .caTargetKeyReference(caTargetKeyReference)
+        .caAidSize(caAidSize)
+        .caAidValue(caAidValue)
+        .caSerialNumber(caSerialNumber)
+        .caKeyId(caKeyId)
+        .startDate(startDate)
+        .caRfu1(caRfu1)
+        .caRights(caRights)
+        .caScope(caScope)
+        .endDate(endDate)
+        .caTargetAidSize(caTargetAidSize)
+        .caTargetAidValue(caTargetAidValue)
+        .caOperatingMode(caOperatingMode)
+        .caRfu2(caRfu2)
+        .publicKeyHeader(publicKeyHeader)
+        .signature(signature)
+        .rsaPublicKey(rsaPublicKey)
+        .build();
+  }
+
+  /**
+   * Reconstructs the RSA public key from the public key header and signature.
+   *
+   * @param publicKeyHeader The first 34 bytes of the modulus.
+   * @param signature The 256-byte signature containing the remaining modulus bytes.
+   * @return The reconstructed RSA public key.
+   */
+  private RSAPublicKey reconstructRsaPublicKey(byte[] publicKeyHeader, byte[] signature) {
+    try {
+      // The modulus is 256 bytes total: 34 bytes from header + 222 bytes from signature
+      byte[] modulus = new byte[256];
+      System.arraycopy(publicKeyHeader, 0, modulus, 0, 34);
+      // The last 222 bytes of the signature encode the remaining modulus bytes
+      // (This is part of the RSA signature scheme where data is encoded in the signature)
+      System.arraycopy(signature, 34, modulus, 34, 222);
+
+      BigInteger modulusBigInt = new BigInteger(1, modulus);
+      BigInteger exponent = BigInteger.valueOf(65537);
+
+      RSAPublicKeySpec keySpec = new RSAPublicKeySpec(modulusBigInt, exponent);
+      KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+      return (RSAPublicKey) keyFactory.generatePublic(keySpec);
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Failed to reconstruct RSA public key", e);
+    }
+  }
+
+  /**
+   * Builds the certificate data for signature verification (128 bytes).
+   *
+   * @param certificate The certificate.
+   * @return The data that was signed.
+   */
+  private byte[] buildCaCertificateDataForVerification(CaCertificate certificate) {
+    byte[] data = new byte[128];
+    int offset = 0;
+
+    // KCertType (1 byte)
+    data[offset++] = certificate.getCertType();
+
+    // KCertStructureVersion (1 byte)
+    data[offset++] = certificate.getStructureVersion();
+
+    // KCertIssuerKeyReference (29 bytes)
+    byte[] issuerKeyRef = certificate.getIssuerKeyReference();
+    System.arraycopy(issuerKeyRef, 0, data, offset, 29);
+    offset += 29;
+
+    // KCertCaTargetKeyReference (29 bytes)
+    byte[] caTargetKeyRef = certificate.getCaTargetKeyReference();
+    System.arraycopy(caTargetKeyRef, 0, data, offset, 29);
+    offset += 29;
+
+    // KCertStartDate (4 bytes)
+    byte[] startDate = certificate.getStartDate();
+    System.arraycopy(startDate, 0, data, offset, 4);
+    offset += 4;
+
+    // KCertCaRfu1 (4 bytes)
+    byte[] caRfu1 = certificate.getCaRfu1();
+    System.arraycopy(caRfu1, 0, data, offset, 4);
+    offset += 4;
+
+    // KCertCaRights (1 byte)
+    data[offset++] = certificate.getCaRights();
+
+    // KCertCaScope (1 byte)
+    data[offset++] = certificate.getCaScope();
+
+    // KCertEndDate (4 bytes)
+    byte[] endDate = certificate.getEndDate();
+    System.arraycopy(endDate, 0, data, offset, 4);
+    offset += 4;
+
+    // KCertCaTargetAidSize (1 byte)
+    data[offset++] = certificate.getCaTargetAidSize();
+
+    // KCertCaTargetAidValue (16 bytes)
+    byte[] caTargetAidValue = certificate.getCaTargetAidValue();
+    System.arraycopy(caTargetAidValue, 0, data, offset, 16);
+    offset += 16;
+
+    // KCertCaOperatingMode (1 byte)
+    data[offset++] = certificate.getCaOperatingMode();
+
+    // KCertCaRfu2 (2 bytes)
+    byte[] caRfu2 = certificate.getCaRfu2();
+    System.arraycopy(caRfu2, 0, data, offset, 2);
+    offset += 2;
+
+    // KCertPublicKeyHeader (34 bytes)
+    byte[] publicKeyHeader = certificate.getPublicKeyHeader();
+    System.arraycopy(publicKeyHeader, 0, data, offset, 34);
+
+    return data;
+  }
+
+  /**
+   * Verifies an RSA signature.
+   *
+   * @param publicKey The public key to verify with.
+   * @param data The data that was signed.
+   * @param signature The signature to verify.
+   * @return true if the signature is valid, false otherwise.
+   */
+  private boolean verifySignature(RSAPublicKey publicKey, byte[] data, byte[] signature) {
+    try {
+      java.security.Signature sig = java.security.Signature.getInstance("NONEwithRSA");
+      sig.initVerify(publicKey);
+      sig.update(data);
+      return sig.verify(signature);
+    } catch (Exception e) {
+      return false;
+    }
   }
 
   /**

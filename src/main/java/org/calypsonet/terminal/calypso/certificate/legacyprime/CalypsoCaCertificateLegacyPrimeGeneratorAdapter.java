@@ -202,26 +202,220 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
               + HexUtil.toHex(issuerPublicKeyReference));
     }
 
-    // TODO: Get issuer certificate from store to retrieve issuer information (caAidSize,
-    // caAidValue, caSerialNumber, caKeyId)
-    // For now, set remaining fields with placeholders
-    certificateBuilder
-        .caAidSize((byte) 0)
-        .caAidValue(new byte[16])
-        .caSerialNumber(new byte[8])
-        .caKeyId(new byte[4])
-        .caRfu1(new byte[4])
-        .caRfu2(new byte[2])
-        .publicKeyHeader(new byte[34]);
+    // Extract CA information from caPublicKeyReference (29 bytes)
+    // Structure: caAidSize (1) + caAidValue (16) + caSerialNumber (8) + caKeyId (4)
+    byte caAidSize = caPublicKeyReference[0];
+    byte[] caAidValue = new byte[16];
+    System.arraycopy(caPublicKeyReference, 1, caAidValue, 0, 16);
+    byte[] caSerialNumber = new byte[8];
+    System.arraycopy(caPublicKeyReference, 17, caSerialNumber, 0, 8);
+    byte[] caKeyId = new byte[4];
+    System.arraycopy(caPublicKeyReference, 25, caKeyId, 0, 4);
 
-    // TODO: Build certificate bytes, sign with signer, and set signature
-    byte[] signature = new byte[256]; // Placeholder
+    // Build the certificate with extracted information
+    certificateBuilder
+        .caAidSize(caAidSize)
+        .caAidValue(caAidValue)
+        .caSerialNumber(caSerialNumber)
+        .caKeyId(caKeyId)
+        .caRfu1(new byte[4])
+        .caRfu2(new byte[2]);
+
+    // Extract public key header (first 34 bytes of RSA modulus)
+    CaCertificate tempCert = certificateBuilder.build();
+    RSAPublicKey rsaPublicKey = tempCert.getRsaPublicKey();
+    if (rsaPublicKey == null) {
+      throw new IllegalStateException("CA public key not set");
+    }
+
+    byte[] modulus = rsaPublicKey.getModulus().toByteArray();
+    byte[] publicKeyHeader = new byte[34];
+
+    // Handle potential leading zero byte in modulus
+    int srcPos = (modulus.length == 257 && modulus[0] == 0) ? 1 : 0;
+    System.arraycopy(modulus, srcPos, publicKeyHeader, 0, 34);
+
+    certificateBuilder.publicKeyHeader(publicKeyHeader);
+
+    // Build certificate bytes for signing (128 bytes from KCertType to KCertPublicKeyHeader)
+    byte[] dataToSign = buildCertificateDataForSigning();
+
+    // Sign the data using the signer (no recoverable data for CA certificates)
+    byte[] signedCertificate = signer.generateSignedCertificate(dataToSign, new byte[0]);
+
+    // Extract signature from signed certificate (last 256 bytes)
+    if (signedCertificate.length != dataToSign.length + 256) {
+      throw new IllegalStateException(
+          "Signed certificate must be "
+              + (dataToSign.length + 256)
+              + " bytes, got "
+              + signedCertificate.length
+              + " bytes");
+    }
+
+    byte[] signature = new byte[256];
+    System.arraycopy(signedCertificate, dataToSign.length, signature, 0, 256);
+
     certificateBuilder.signature(signature);
 
+    // Build the final certificate
     CaCertificate certificate = certificateBuilder.build();
 
-    // TODO: Serialize certificate to 384-byte array
-    throw new UnsupportedOperationException("Not yet implemented");
+    // Serialize certificate to 384-byte array
+    return serializeCaCertificate(certificate);
+  }
+
+  /**
+   * Builds the certificate data to be signed (128 bytes).
+   *
+   * @return The data to sign.
+   */
+  private byte[] buildCertificateDataForSigning() {
+    CaCertificate tempCert = certificateBuilder.build();
+    byte[] data = new byte[128];
+    int offset = 0;
+
+    // KCertType (1 byte)
+    data[offset++] = tempCert.getCertType();
+
+    // KCertStructureVersion (1 byte)
+    data[offset++] = tempCert.getStructureVersion();
+
+    // KCertIssuerKeyReference (29 bytes)
+    byte[] issuerKeyRef = tempCert.getIssuerKeyReference();
+    System.arraycopy(issuerKeyRef, 0, data, offset, 29);
+    offset += 29;
+
+    // KCertCaTargetKeyReference (29 bytes)
+    byte[] caTargetKeyRef = tempCert.getCaTargetKeyReference();
+    System.arraycopy(caTargetKeyRef, 0, data, offset, 29);
+    offset += 29;
+
+    // KCertStartDate (4 bytes)
+    byte[] startDate = tempCert.getStartDate();
+    if (startDate != null) {
+      System.arraycopy(startDate, 0, data, offset, 4);
+    }
+    offset += 4;
+
+    // KCertCaRfu1 (4 bytes)
+    byte[] caRfu1 = tempCert.getCaRfu1();
+    System.arraycopy(caRfu1, 0, data, offset, 4);
+    offset += 4;
+
+    // KCertCaRights (1 byte)
+    data[offset++] = tempCert.getCaRights();
+
+    // KCertCaScope (1 byte)
+    data[offset++] = tempCert.getCaScope();
+
+    // KCertEndDate (4 bytes)
+    byte[] endDate = tempCert.getEndDate();
+    if (endDate != null) {
+      System.arraycopy(endDate, 0, data, offset, 4);
+    }
+    offset += 4;
+
+    // KCertCaTargetAidSize (1 byte)
+    data[offset++] = tempCert.getCaTargetAidSize();
+
+    // KCertCaTargetAidValue (16 bytes)
+    byte[] caTargetAidValue = tempCert.getCaTargetAidValue();
+    System.arraycopy(caTargetAidValue, 0, data, offset, 16);
+    offset += 16;
+
+    // KCertCaOperatingMode (1 byte)
+    data[offset++] = tempCert.getCaOperatingMode();
+
+    // KCertCaRfu2 (2 bytes)
+    byte[] caRfu2 = tempCert.getCaRfu2();
+    System.arraycopy(caRfu2, 0, data, offset, 2);
+    offset += 2;
+
+    // KCertPublicKeyHeader (34 bytes)
+    byte[] publicKeyHeader = tempCert.getPublicKeyHeader();
+    System.arraycopy(publicKeyHeader, 0, data, offset, 34);
+
+    return data;
+  }
+
+  /**
+   * Serializes the CA certificate to a 384-byte array.
+   *
+   * @param certificate The certificate to serialize.
+   * @return The serialized certificate.
+   */
+  private byte[] serializeCaCertificate(CaCertificate certificate) {
+    byte[] serialized = new byte[384];
+    int offset = 0;
+
+    // KCertType (1 byte)
+    serialized[offset++] = certificate.getCertType();
+
+    // KCertStructureVersion (1 byte)
+    serialized[offset++] = certificate.getStructureVersion();
+
+    // KCertIssuerKeyReference (29 bytes)
+    byte[] issuerKeyRef = certificate.getIssuerKeyReference();
+    System.arraycopy(issuerKeyRef, 0, serialized, offset, 29);
+    offset += 29;
+
+    // KCertCaTargetKeyReference (29 bytes)
+    byte[] caTargetKeyRef = certificate.getCaTargetKeyReference();
+    System.arraycopy(caTargetKeyRef, 0, serialized, offset, 29);
+    offset += 29;
+
+    // KCertStartDate (4 bytes)
+    byte[] startDate = certificate.getStartDate();
+    if (startDate != null) {
+      System.arraycopy(startDate, 0, serialized, offset, 4);
+    }
+    offset += 4;
+
+    // KCertCaRfu1 (4 bytes)
+    byte[] caRfu1 = certificate.getCaRfu1();
+    System.arraycopy(caRfu1, 0, serialized, offset, 4);
+    offset += 4;
+
+    // KCertCaRights (1 byte)
+    serialized[offset++] = certificate.getCaRights();
+
+    // KCertCaScope (1 byte)
+    serialized[offset++] = certificate.getCaScope();
+
+    // KCertEndDate (4 bytes)
+    byte[] endDate = certificate.getEndDate();
+    if (endDate != null) {
+      System.arraycopy(endDate, 0, serialized, offset, 4);
+    }
+    offset += 4;
+
+    // KCertCaTargetAidSize (1 byte)
+    serialized[offset++] = certificate.getCaTargetAidSize();
+
+    // KCertCaTargetAidValue (16 bytes)
+    byte[] caTargetAidValue = certificate.getCaTargetAidValue();
+    System.arraycopy(caTargetAidValue, 0, serialized, offset, 16);
+    offset += 16;
+
+    // KCertCaOperatingMode (1 byte)
+    serialized[offset++] = certificate.getCaOperatingMode();
+
+    // KCertCaRfu2 (2 bytes)
+    byte[] caRfu2 = certificate.getCaRfu2();
+    System.arraycopy(caRfu2, 0, serialized, offset, 2);
+    offset += 2;
+
+    // KCertPublicKeyHeader (34 bytes)
+    byte[] publicKeyHeader = certificate.getPublicKeyHeader();
+    System.arraycopy(publicKeyHeader, 0, serialized, offset, 34);
+    offset += 34;
+
+    // KCertSignature (256 bytes)
+    byte[] signature = certificate.getSignature();
+    System.arraycopy(signature, 0, serialized, offset, 256);
+
+    return serialized;
   }
 
   /**
