@@ -90,7 +90,7 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
         .isInRange(month, 1, 99, "month")
         .isInRange(day, 1, 99, "day");
 
-    certificateBuilder.startDate(encodeDateBcd(year, month, day));
+    certificateBuilder.startDate(CertificateUtils.encodeDateBcd(year, month, day));
     return this;
   }
 
@@ -106,7 +106,7 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
         .isInRange(month, 1, 99, "month")
         .isInRange(day, 1, 99, "day");
 
-    certificateBuilder.endDate(encodeDateBcd(year, month, day));
+    certificateBuilder.endDate(CertificateUtils.encodeDateBcd(year, month, day));
     return this;
   }
 
@@ -416,22 +416,5 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
     System.arraycopy(signature, 0, serialized, offset, 256);
 
     return serialized;
-  }
-
-  /**
-   * Encodes a date in BCD format (YYYYMMDD).
-   *
-   * @param year The year (0-9999).
-   * @param month The month (1-99).
-   * @param day The day (1-99).
-   * @return The encoded date (4 bytes).
-   */
-  private byte[] encodeDateBcd(int year, int month, int day) {
-    byte[] date = new byte[4];
-    date[0] = (byte) ((year / 1000) << 4 | (year / 100) % 10);
-    date[1] = (byte) ((year / 10) % 10 << 4 | year % 10);
-    date[2] = (byte) ((month / 10) << 4 | month % 10);
-    date[3] = (byte) ((day / 10) << 4 | day % 10);
-    return date;
   }
 }

@@ -67,8 +67,9 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
    */
   @Override
   public CalypsoCardCertificateLegacyPrimeGenerator withCardPublicKey(byte[] cardPublicKey) {
-    Assert.getInstance().notNull(cardPublicKey, "cardPublicKey");
-    Assert.getInstance().isEqual(cardPublicKey.length, 64, "cardPublicKey length");
+    Assert.getInstance()
+        .notNull(cardPublicKey, "cardPublicKey")
+        .isEqual(cardPublicKey.length, 64, "cardPublicKey length");
 
     certificateBuilder.eccPublicKey(cardPublicKey);
     cardPublicKeySet = true;
@@ -82,11 +83,12 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
    */
   @Override
   public CalypsoCardCertificateLegacyPrimeGenerator withStartDate(int year, int month, int day) {
-    Assert.getInstance().isInRange(year, 0, 9999, "year");
-    Assert.getInstance().isInRange(month, 1, 99, "month");
-    Assert.getInstance().isInRange(day, 1, 99, "day");
+    Assert.getInstance()
+        .isInRange(year, 0, 9999, "year")
+        .isInRange(month, 1, 99, "month")
+        .isInRange(day, 1, 99, "day");
 
-    certificateBuilder.startDate(encodeDateBcd(year, month, day));
+    certificateBuilder.startDate(CertificateUtils.encodeDateBcd(year, month, day));
     return this;
   }
 
@@ -97,11 +99,12 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
    */
   @Override
   public CalypsoCardCertificateLegacyPrimeGenerator withEndDate(int year, int month, int day) {
-    Assert.getInstance().isInRange(year, 0, 9999, "year");
-    Assert.getInstance().isInRange(month, 1, 99, "month");
-    Assert.getInstance().isInRange(day, 1, 99, "day");
+    Assert.getInstance()
+        .isInRange(year, 0, 9999, "year")
+        .isInRange(month, 1, 99, "month")
+        .isInRange(day, 1, 99, "day");
 
-    certificateBuilder.endDate(encodeDateBcd(year, month, day));
+    certificateBuilder.endDate(CertificateUtils.encodeDateBcd(year, month, day));
     return this;
   }
 
@@ -112,8 +115,7 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
    */
   @Override
   public CalypsoCardCertificateLegacyPrimeGenerator withCardAid(byte[] aid) {
-    Assert.getInstance().notNull(aid, "aid");
-    Assert.getInstance().isInRange(aid.length, 5, 16, "aid length");
+    Assert.getInstance().notNull(aid, "aid").isInRange(aid.length, 5, 16, "aid length");
 
     // Check if AID contains only zero bytes
     boolean allZeros = true;
@@ -142,8 +144,9 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
    */
   @Override
   public CalypsoCardCertificateLegacyPrimeGenerator withCardSerialNumber(byte[] serialNumber) {
-    Assert.getInstance().notNull(serialNumber, "serialNumber");
-    Assert.getInstance().isEqual(serialNumber.length, 8, "serialNumber length");
+    Assert.getInstance()
+        .notNull(serialNumber, "serialNumber")
+        .isEqual(serialNumber.length, 8, "serialNumber length");
 
     certificateBuilder.cardSerialNumber(serialNumber);
     cardSerialNumberSet = true;
@@ -157,8 +160,9 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
    */
   @Override
   public CalypsoCardCertificateLegacyPrimeGenerator withCardStartupInfo(byte[] startupInfo) {
-    Assert.getInstance().notNull(startupInfo, "startupInfo");
-    Assert.getInstance().isEqual(startupInfo.length, 7, "startupInfo length");
+    Assert.getInstance()
+        .notNull(startupInfo, "startupInfo")
+        .isEqual(startupInfo.length, 7, "startupInfo length");
 
     certificateBuilder.cardInfo(startupInfo);
     cardStartupInfoSet = true;
@@ -408,22 +412,5 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
     System.arraycopy(signature, 0, serialized, offset, 256);
 
     return serialized;
-  }
-
-  /**
-   * Encodes a date in BCD format (YYYYMMDD).
-   *
-   * @param year The year (0-9999).
-   * @param month The month (1-99).
-   * @param day The day (1-99).
-   * @return The encoded date (4 bytes).
-   */
-  private byte[] encodeDateBcd(int year, int month, int day) {
-    byte[] date = new byte[4];
-    date[0] = (byte) ((year / 1000) << 4 | (year / 100) % 10);
-    date[1] = (byte) ((year / 10) % 10 << 4 | year % 10);
-    date[2] = (byte) ((month / 10) << 4 | month % 10);
-    date[3] = (byte) ((day / 10) << 4 | day % 10);
-    return date;
   }
 }
