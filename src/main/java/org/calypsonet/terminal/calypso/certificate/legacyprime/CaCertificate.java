@@ -371,6 +371,125 @@ final class CaCertificate {
   }
 
   /**
+   * Parses a CA certificate from its byte array representation.
+   *
+   * <p>This method deserializes a 384-byte CA certificate according to the Calypso Prime Legacy
+   * specification and reconstructs all certificate fields including the RSA public key.
+   *
+   * @param caCertificate The 384-byte certificate to parse.
+   * @return The parsed CA certificate.
+   * @throws IllegalArgumentException if the certificate data is invalid.
+   * @since 0.1.0
+   */
+  static CaCertificate fromBytes(byte[] caCertificate) {
+    if (caCertificate == null || caCertificate.length != 384) {
+      throw new IllegalArgumentException(
+          "CA certificate must be 384 bytes, got "
+              + (caCertificate == null ? "null" : caCertificate.length));
+    }
+
+    int offset = 0;
+
+    // KCertType (1 byte)
+    byte certType = caCertificate[offset++];
+
+    // KCertStructureVersion (1 byte)
+    byte structureVersion = caCertificate[offset++];
+
+    // KCertIssuerKeyReference (29 bytes)
+    byte[] issuerKeyReference = new byte[29];
+    System.arraycopy(caCertificate, offset, issuerKeyReference, 0, 29);
+    offset += 29;
+
+    // KCertCaTargetKeyReference (29 bytes)
+    byte[] caTargetKeyReference = new byte[29];
+    System.arraycopy(caCertificate, offset, caTargetKeyReference, 0, 29);
+    offset += 29;
+
+    // Extract fields from caTargetKeyReference
+    byte caAidSize = caTargetKeyReference[0];
+    byte[] caAidValue = new byte[16];
+    System.arraycopy(caTargetKeyReference, 1, caAidValue, 0, 16);
+    byte[] caSerialNumber = new byte[8];
+    System.arraycopy(caTargetKeyReference, 17, caSerialNumber, 0, 8);
+    byte[] caKeyId = new byte[4];
+    System.arraycopy(caTargetKeyReference, 25, caKeyId, 0, 4);
+
+    // KCertStartDate (4 bytes)
+    byte[] startDate = new byte[4];
+    System.arraycopy(caCertificate, offset, startDate, 0, 4);
+    offset += 4;
+
+    // KCertCaRfu1 (4 bytes)
+    byte[] caRfu1 = new byte[4];
+    System.arraycopy(caCertificate, offset, caRfu1, 0, 4);
+    offset += 4;
+
+    // KCertCaRights (1 byte)
+    byte caRights = caCertificate[offset++];
+
+    // KCertCaScope (1 byte)
+    byte caScope = caCertificate[offset++];
+
+    // KCertEndDate (4 bytes)
+    byte[] endDate = new byte[4];
+    System.arraycopy(caCertificate, offset, endDate, 0, 4);
+    offset += 4;
+
+    // KCertCaTargetAidSize (1 byte)
+    byte caTargetAidSize = caCertificate[offset++];
+
+    // KCertCaTargetAidValue (16 bytes)
+    byte[] caTargetAidValue = new byte[16];
+    System.arraycopy(caCertificate, offset, caTargetAidValue, 0, 16);
+    offset += 16;
+
+    // KCertCaOperatingMode (1 byte)
+    byte caOperatingMode = caCertificate[offset++];
+
+    // KCertCaRfu2 (2 bytes)
+    byte[] caRfu2 = new byte[2];
+    System.arraycopy(caCertificate, offset, caRfu2, 0, 2);
+    offset += 2;
+
+    // KCertPublicKeyHeader (34 bytes)
+    byte[] publicKeyHeader = new byte[34];
+    System.arraycopy(caCertificate, offset, publicKeyHeader, 0, 34);
+    offset += 34;
+
+    // KCertSignature (256 bytes)
+    byte[] signature = new byte[256];
+    System.arraycopy(caCertificate, offset, signature, 0, 256);
+
+    // Reconstruct the RSA public key from the public key header and signature
+    RSAPublicKey rsaPublicKey =
+        CertificateUtils.reconstructRsaPublicKeyFromSignature(publicKeyHeader, signature);
+
+    return CaCertificate.builder()
+        .certType(certType)
+        .structureVersion(structureVersion)
+        .issuerKeyReference(issuerKeyReference)
+        .caTargetKeyReference(caTargetKeyReference)
+        .caAidSize(caAidSize)
+        .caAidValue(caAidValue)
+        .caSerialNumber(caSerialNumber)
+        .caKeyId(caKeyId)
+        .startDate(startDate)
+        .caRfu1(caRfu1)
+        .caRights(caRights)
+        .caScope(caScope)
+        .endDate(endDate)
+        .caTargetAidSize(caTargetAidSize)
+        .caTargetAidValue(caTargetAidValue)
+        .caOperatingMode(caOperatingMode)
+        .caRfu2(caRfu2)
+        .publicKeyHeader(publicKeyHeader)
+        .signature(signature)
+        .rsaPublicKey(rsaPublicKey)
+        .build();
+  }
+
+  /**
    * Creates a new builder instance.
    *
    * @return A new builder.

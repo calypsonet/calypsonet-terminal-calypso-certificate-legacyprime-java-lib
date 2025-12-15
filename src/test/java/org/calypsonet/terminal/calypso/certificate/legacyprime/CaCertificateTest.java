@@ -331,4 +331,105 @@ class CaCertificateTest {
     // Then
     assertThat(bytes1).isEqualTo(bytes2);
   }
+
+  // Tests for fromBytes()
+
+  @Test
+  void fromBytes_whenCertificateIsValid_shouldParseCertificate() {
+    // Given - Create a valid certificate and serialize it
+    CaCertificate originalCertificate =
+        builder
+            .certType((byte) 0x90)
+            .structureVersion((byte) 0x01)
+            .issuerKeyReference(issuerKeyReference)
+            .caTargetKeyReference(caTargetKeyReference)
+            .startDate(startDate)
+            .caRfu1(caRfu1)
+            .caRights((byte) 0x0F)
+            .caScope((byte) 0xFF)
+            .endDate(endDate)
+            .caTargetAidSize((byte) 0x10)
+            .caTargetAidValue(caTargetAidValue)
+            .caOperatingMode((byte) 0x01)
+            .caRfu2(caRfu2)
+            .publicKeyHeader(publicKeyHeader)
+            .signature(signature)
+            .rsaPublicKey(rsaPublicKey)
+            .build();
+
+    byte[] certificateBytes = originalCertificate.toBytes();
+
+    // When
+    CaCertificate parsedCertificate = CaCertificate.fromBytes(certificateBytes);
+
+    // Then
+    assertThat(parsedCertificate).isNotNull();
+    assertThat(parsedCertificate.getCertType()).isEqualTo((byte) 0x90);
+    assertThat(parsedCertificate.getStructureVersion()).isEqualTo((byte) 0x01);
+    assertThat(parsedCertificate.getIssuerKeyReference()).isEqualTo(issuerKeyReference);
+    assertThat(parsedCertificate.getCaTargetKeyReference()).isEqualTo(caTargetKeyReference);
+    assertThat(parsedCertificate.getStartDate()).isEqualTo(startDate);
+    assertThat(parsedCertificate.getCaRfu1()).isEqualTo(caRfu1);
+    assertThat(parsedCertificate.getCaRights()).isEqualTo((byte) 0x0F);
+    assertThat(parsedCertificate.getCaScope()).isEqualTo((byte) 0xFF);
+    assertThat(parsedCertificate.getEndDate()).isEqualTo(endDate);
+    assertThat(parsedCertificate.getCaTargetAidSize()).isEqualTo((byte) 0x10);
+    assertThat(parsedCertificate.getCaTargetAidValue()).isEqualTo(caTargetAidValue);
+    assertThat(parsedCertificate.getCaOperatingMode()).isEqualTo((byte) 0x01);
+    assertThat(parsedCertificate.getCaRfu2()).isEqualTo(caRfu2);
+    assertThat(parsedCertificate.getPublicKeyHeader()).isEqualTo(publicKeyHeader);
+    assertThat(parsedCertificate.getSignature()).isEqualTo(signature);
+    assertThat(parsedCertificate.getRsaPublicKey()).isNotNull();
+  }
+
+  @Test
+  void fromBytes_whenCertificateIsNull_shouldThrowIllegalArgumentException() {
+    // When & Then
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> CaCertificate.fromBytes(null))
+        .withMessageContaining("384 bytes");
+  }
+
+  @Test
+  void fromBytes_whenCertificateIsNot384Bytes_shouldThrowIllegalArgumentException() {
+    // Given - Invalid certificate with wrong length
+    byte[] invalidCertificate = new byte[256];
+
+    // When & Then
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> CaCertificate.fromBytes(invalidCertificate))
+        .withMessageContaining("384 bytes");
+  }
+
+  @Test
+  void fromBytes_roundTrip_shouldPreserveAllFields() {
+    // Given - Create a certificate with all fields set
+    CaCertificate originalCertificate =
+        builder
+            .certType((byte) 0x90)
+            .structureVersion((byte) 0x01)
+            .issuerKeyReference(issuerKeyReference)
+            .caTargetKeyReference(caTargetKeyReference)
+            .startDate(startDate)
+            .caRfu1(caRfu1)
+            .caRights((byte) 0x0F)
+            .caScope((byte) 0xFF)
+            .endDate(endDate)
+            .caTargetAidSize((byte) 0x10)
+            .caTargetAidValue(caTargetAidValue)
+            .caOperatingMode((byte) 0x01)
+            .caRfu2(caRfu2)
+            .publicKeyHeader(publicKeyHeader)
+            .signature(signature)
+            .rsaPublicKey(rsaPublicKey)
+            .build();
+
+    // When - Serialize and deserialize
+    byte[] serialized = originalCertificate.toBytes();
+    CaCertificate deserialized = CaCertificate.fromBytes(serialized);
+    byte[] reserialized = deserialized.toBytes();
+
+    // Then - Round-trip should preserve all data
+    assertThat(reserialized).isEqualTo(serialized);
+  }
 }

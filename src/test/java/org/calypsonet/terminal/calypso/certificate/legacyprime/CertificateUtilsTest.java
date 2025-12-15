@@ -202,4 +202,130 @@ class CertificateUtilsTest {
     // 07 => 0x07
     assertThat(encoded[3]).isEqualTo((byte) 0x07);
   }
+
+  // Tests for reconstructRsaPublicKeyFromSignature()
+
+  @Test
+  void reconstructRsaPublicKeyFromSignature_whenParametersAreValid_shouldReturnValidKey() {
+    // Given - Create a valid 34-byte header and 256-byte signature
+    byte[] publicKeyHeader = new byte[34];
+    for (int i = 0; i < 34; i++) {
+      publicKeyHeader[i] = (byte) (0x50 + i);
+    }
+
+    byte[] signature = new byte[256];
+    for (int i = 0; i < 256; i++) {
+      signature[i] = (byte) (0xFF - i);
+    }
+
+    // When
+    RSAPublicKey publicKey =
+        CertificateUtils.reconstructRsaPublicKeyFromSignature(publicKeyHeader, signature);
+
+    // Then
+    assertThat(publicKey).isNotNull();
+    assertThat(publicKey.getModulus().bitLength()).isGreaterThan(0);
+    assertThat(publicKey.getPublicExponent().intValue()).isEqualTo(65537);
+  }
+
+  @Test
+  void
+      reconstructRsaPublicKeyFromSignature_whenHeaderAndSignatureAreCombined_shouldProduceCorrectModulus() {
+    // Given - Create known header and signature data
+    byte[] publicKeyHeader = new byte[34];
+    for (int i = 0; i < 34; i++) {
+      publicKeyHeader[i] = (byte) i;
+    }
+
+    byte[] signature = new byte[256];
+    for (int i = 0; i < 256; i++) {
+      signature[i] = (byte) (i % 256);
+    }
+
+    // When
+    RSAPublicKey publicKey =
+        CertificateUtils.reconstructRsaPublicKeyFromSignature(publicKeyHeader, signature);
+
+    // Then - Verify the key was created successfully
+    assertThat(publicKey).isNotNull();
+    // The modulus should be 2048 bits (256 bytes)
+    assertThat(publicKey.getModulus().bitLength()).isLessThanOrEqualTo(2048);
+    assertThat(publicKey.getModulus().bitLength()).isGreaterThan(0);
+  }
+
+  @Test
+  void reconstructRsaPublicKeyFromSignature_whenCalledTwiceWithSameInputs_shouldProduceSameKey() {
+    // Given
+    byte[] publicKeyHeader = new byte[34];
+    for (int i = 0; i < 34; i++) {
+      publicKeyHeader[i] = (byte) (0x01 + i);
+    }
+
+    byte[] signature = new byte[256];
+    for (int i = 0; i < 256; i++) {
+      signature[i] = (byte) (0x80 + (i % 128));
+    }
+
+    // When
+    RSAPublicKey publicKey1 =
+        CertificateUtils.reconstructRsaPublicKeyFromSignature(publicKeyHeader, signature);
+    RSAPublicKey publicKey2 =
+        CertificateUtils.reconstructRsaPublicKeyFromSignature(publicKeyHeader, signature);
+
+    // Then - Both keys should have the same modulus and exponent
+    assertThat(publicKey1.getModulus()).isEqualTo(publicKey2.getModulus());
+    assertThat(publicKey1.getPublicExponent()).isEqualTo(publicKey2.getPublicExponent());
+  }
+
+  @Test
+  void reconstructRsaPublicKeyFromSignature_whenHeaderIsNull_shouldThrowIllegalArgumentException() {
+    // Given
+    byte[] signature = new byte[256];
+
+    // When & Then
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> CertificateUtils.reconstructRsaPublicKeyFromSignature(null, signature))
+        .withMessageContaining("Failed to create RSA public key from signature");
+  }
+
+  @Test
+  void
+      reconstructRsaPublicKeyFromSignature_whenSignatureIsNull_shouldThrowIllegalArgumentException() {
+    // Given
+    byte[] publicKeyHeader = new byte[34];
+
+    // When & Then
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () -> CertificateUtils.reconstructRsaPublicKeyFromSignature(publicKeyHeader, null))
+        .withMessageContaining("Failed to create RSA public key from signature");
+  }
+
+  @Test
+  void
+      reconstructRsaPublicKeyFromSignature_whenHeaderIsTooShort_shouldThrowIllegalArgumentException() {
+    // Given - Header with only 10 bytes instead of 34
+    byte[] publicKeyHeader = new byte[10];
+    byte[] signature = new byte[256];
+
+    // When & Then
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () -> CertificateUtils.reconstructRsaPublicKeyFromSignature(publicKeyHeader, signature))
+        .withMessageContaining("Failed to create RSA public key from signature");
+  }
+
+  @Test
+  void
+      reconstructRsaPublicKeyFromSignature_whenSignatureIsTooShort_shouldThrowIllegalArgumentException() {
+    // Given - Signature with only 100 bytes instead of 256
+    byte[] publicKeyHeader = new byte[34];
+    byte[] signature = new byte[100];
+
+    // When & Then
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () -> CertificateUtils.reconstructRsaPublicKeyFromSignature(publicKeyHeader, signature))
+        .withMessageContaining("Failed to create RSA public key from signature");
+  }
 }

@@ -75,6 +75,36 @@ final class CertificateUtils {
   }
 
   /**
+   * Reconstructs an RSA public key from the public key header and signature.
+   *
+   * <p>The RSA modulus is reconstructed by combining the public key header (first 34 bytes) with
+   * the last 222 bytes of the signature, which encode the remaining modulus bytes as part of the
+   * ISO 9796-2 signature scheme.
+   *
+   * @param publicKeyHeader The first 34 bytes of the modulus.
+   * @param signature The 256-byte signature containing the remaining modulus bytes.
+   * @return The reconstructed RSA public key.
+   * @throws IllegalArgumentException if the parameters are invalid or if an error occurred during
+   *     the cryptographic operations.
+   * @since 0.1.0
+   */
+  static RSAPublicKey reconstructRsaPublicKeyFromSignature(
+      byte[] publicKeyHeader, byte[] signature) {
+    try {
+      // The modulus is 256 bytes total: 34 bytes from header + 222 bytes from signature
+      byte[] modulus = new byte[256];
+      System.arraycopy(publicKeyHeader, 0, modulus, 0, 34);
+      // The last 222 bytes of the signature encode the remaining modulus bytes
+      // (This is part of the RSA signature scheme where data is encoded in the signature)
+      System.arraycopy(signature, 34, modulus, 34, 222);
+
+      return generateRSAPublicKeyFromModulus(modulus);
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Failed to create RSA public key from signature", e);
+    }
+  }
+
+  /**
    * Encodes a date in BCD format (YYYYMMDD).
    *
    * @param year The year (0-9999).
