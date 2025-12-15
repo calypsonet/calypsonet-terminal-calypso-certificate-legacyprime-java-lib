@@ -1,5 +1,5 @@
 /* **************************************************************************************
- * Copyright (c) 2024 Calypso Networks Association https://calypsonet.org/
+ * Copyright (c) 2025 Calypso Networks Association https://calypsonet.org/
  *
  * See the NOTICE file(s) distributed with this work for additional information
  * regarding copyright ownership.
@@ -344,17 +344,6 @@ class CalypsoCaCertificateLegacyPrimeGeneratorAdapterTest {
     assertThatIllegalStateException()
         .isThrownBy(() -> badGenerator.generate())
         .withMessageContaining("not found in store");
-  }
-
-  @Test
-  void generate_whenAllRequiredParametersSet_shouldThrowUnsupportedOperationException() {
-    // Given
-    generator.withCaPublicKey(caPublicKeyReference, validRsaPublicKey);
-
-    // When & Then - Method not yet implemented
-    assertThatExceptionOfType(UnsupportedOperationException.class)
-        .isThrownBy(() -> generator.generate())
-        .withMessageContaining("Not yet implemented");
   }
 
   // Test builder pattern chaining

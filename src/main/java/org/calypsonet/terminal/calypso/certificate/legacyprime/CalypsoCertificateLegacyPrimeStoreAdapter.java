@@ -1,5 +1,5 @@
 /* **************************************************************************************
- * Copyright (c) 2024 Calypso Networks Association https://calypsonet.org/
+ * Copyright (c) 2025 Calypso Networks Association https://calypsonet.org/
  *
  * See the NOTICE file(s) distributed with this work for additional information
  * regarding copyright ownership.
@@ -11,10 +11,7 @@
  ************************************************************************************** */
 package org.calypsonet.terminal.calypso.certificate.legacyprime;
 
-import java.math.BigInteger;
-import java.security.KeyFactory;
 import java.security.interfaces.RSAPublicKey;
-import java.security.spec.RSAPublicKeySpec;
 import java.util.HashMap;
 import java.util.Map;
 import org.eclipse.keyple.core.util.Assert;
@@ -84,19 +81,8 @@ final class CalypsoCertificateLegacyPrimeStoreAdapter
           "Public key reference already exists in the store: " + keyRef);
     }
 
-    try {
-      // Create RSA public key from modulus (exponent is always 65537 = 0x010001)
-      BigInteger modulus = new BigInteger(1, pcaPublicKeyModulus);
-      BigInteger exponent = BigInteger.valueOf(65537);
-
-      RSAPublicKeySpec keySpec = new RSAPublicKeySpec(modulus, exponent);
-      KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-      RSAPublicKey publicKey = (RSAPublicKey) keyFactory.generatePublic(keySpec);
-
-      pcaPublicKeys.put(keyRef, publicKey);
-    } catch (Exception e) {
-      throw new IllegalArgumentException("Failed to create RSA public key from modulus", e);
-    }
+    RSAPublicKey publicKey = CertificateUtils.generateRSAPublicKeyFromModulus(pcaPublicKeyModulus);
+    pcaPublicKeys.put(keyRef, publicKey);
   }
 
   /**
@@ -272,23 +258,14 @@ final class CalypsoCertificateLegacyPrimeStoreAdapter
    * @return The reconstructed RSA public key.
    */
   private RSAPublicKey reconstructRsaPublicKey(byte[] publicKeyHeader, byte[] signature) {
-    try {
-      // The modulus is 256 bytes total: 34 bytes from header + 222 bytes from signature
-      byte[] modulus = new byte[256];
-      System.arraycopy(publicKeyHeader, 0, modulus, 0, 34);
-      // The last 222 bytes of the signature encode the remaining modulus bytes
-      // (This is part of the RSA signature scheme where data is encoded in the signature)
-      System.arraycopy(signature, 34, modulus, 34, 222);
+    // The modulus is 256 bytes total: 34 bytes from header + 222 bytes from signature
+    byte[] modulus = new byte[256];
+    System.arraycopy(publicKeyHeader, 0, modulus, 0, 34);
+    // The last 222 bytes of the signature encode the remaining modulus bytes
+    // (This is part of the RSA signature scheme where data is encoded in the signature)
+    System.arraycopy(signature, 34, modulus, 34, 222);
 
-      BigInteger modulusBigInt = new BigInteger(1, modulus);
-      BigInteger exponent = BigInteger.valueOf(65537);
-
-      RSAPublicKeySpec keySpec = new RSAPublicKeySpec(modulusBigInt, exponent);
-      KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-      return (RSAPublicKey) keyFactory.generatePublic(keySpec);
-    } catch (Exception e) {
-      throw new IllegalArgumentException("Failed to reconstruct RSA public key", e);
-    }
+    return CertificateUtils.generateRSAPublicKeyFromModulus(modulus);
   }
 
   /**

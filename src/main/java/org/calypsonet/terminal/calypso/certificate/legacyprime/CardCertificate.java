@@ -1,5 +1,5 @@
 /* **************************************************************************************
- * Copyright (c) 2024 Calypso Networks Association https://calypsonet.org/
+ * Copyright (c) 2025 Calypso Networks Association https://calypsonet.org/
  *
  * See the NOTICE file(s) distributed with this work for additional information
  * regarding copyright ownership.
@@ -50,23 +50,26 @@ final class CardCertificate {
   private CardCertificate(Builder builder) {
     this.certType = builder.certType;
     this.structureVersion = builder.structureVersion;
-    this.issuerKeyReference = builder.issuerKeyReference.clone();
+    this.issuerKeyReference =
+        builder.issuerKeyReference != null ? builder.issuerKeyReference.clone() : null;
     this.issuerAidSize = builder.issuerAidSize;
-    this.issuerAidValue = builder.issuerAidValue.clone();
-    this.issuerSerialNumber = builder.issuerSerialNumber.clone();
-    this.issuerKeyId = builder.issuerKeyId.clone();
+    this.issuerAidValue = builder.issuerAidValue != null ? builder.issuerAidValue.clone() : null;
+    this.issuerSerialNumber =
+        builder.issuerSerialNumber != null ? builder.issuerSerialNumber.clone() : null;
+    this.issuerKeyId = builder.issuerKeyId != null ? builder.issuerKeyId.clone() : null;
     this.cardAidSize = builder.cardAidSize;
-    this.cardAidValue = builder.cardAidValue.clone();
-    this.cardSerialNumber = builder.cardSerialNumber.clone();
-    this.cardIndex = builder.cardIndex.clone();
-    this.signature = builder.signature.clone();
-    this.startDate = builder.startDate.clone();
-    this.endDate = builder.endDate.clone();
+    this.cardAidValue = builder.cardAidValue != null ? builder.cardAidValue.clone() : null;
+    this.cardSerialNumber =
+        builder.cardSerialNumber != null ? builder.cardSerialNumber.clone() : null;
+    this.cardIndex = builder.cardIndex != null ? builder.cardIndex.clone() : null;
+    this.signature = builder.signature != null ? builder.signature.clone() : null;
+    this.startDate = builder.startDate != null ? builder.startDate.clone() : null;
+    this.endDate = builder.endDate != null ? builder.endDate.clone() : null;
     this.cardRights = builder.cardRights;
-    this.cardInfo = builder.cardInfo.clone();
-    this.cardRfu = builder.cardRfu.clone();
-    this.eccPublicKey = builder.eccPublicKey.clone();
-    this.eccRfu = builder.eccRfu.clone();
+    this.cardInfo = builder.cardInfo != null ? builder.cardInfo.clone() : null;
+    this.cardRfu = builder.cardRfu != null ? builder.cardRfu.clone() : null;
+    this.eccPublicKey = builder.eccPublicKey != null ? builder.eccPublicKey.clone() : null;
+    this.eccRfu = builder.eccRfu != null ? builder.eccRfu.clone() : null;
   }
 
   /**
@@ -257,6 +260,122 @@ final class CardCertificate {
    */
   byte[] getEccRfu() {
     return eccRfu.clone();
+  }
+
+  /**
+   * Serializes the recoverable data for ISO9796-2 signature (222 bytes).
+   *
+   * <p>This represents the data that will be embedded in the signature and can be recovered during
+   * verification according to the ISO9796-2 scheme.
+   *
+   * @return A 222-byte array containing the recoverable data.
+   * @since 0.1.0
+   */
+  byte[] getRecoverableDataForSigning() {
+    byte[] data = new byte[222];
+    int offset = 0;
+
+    // KCertStartDate (4 bytes)
+    if (startDate != null) {
+      System.arraycopy(startDate, 0, data, offset, 4);
+    }
+    offset += 4;
+
+    // KCertEndDate (4 bytes)
+    if (endDate != null) {
+      System.arraycopy(endDate, 0, data, offset, 4);
+    }
+    offset += 4;
+
+    // KCertCardRights (1 byte)
+    data[offset++] = cardRights;
+
+    // KCertCardInfo (7 bytes)
+    if (cardInfo != null) {
+      System.arraycopy(cardInfo, 0, data, offset, 7);
+    }
+    offset += 7;
+
+    // KCertCardRfu (18 bytes)
+    System.arraycopy(cardRfu, 0, data, offset, 18);
+    offset += 18;
+
+    // KCertEccPublicKey (64 bytes)
+    if (eccPublicKey != null) {
+      System.arraycopy(eccPublicKey, 0, data, offset, 64);
+    }
+    offset += 64;
+
+    // KCertEccRfu (124 bytes)
+    System.arraycopy(eccRfu, 0, data, offset, 124);
+
+    return data;
+  }
+
+  /**
+   * Serializes the non-recoverable data for ISO9796-2 signature (60 bytes).
+   *
+   * <p>This represents the data that must be signed according to the Calypso Prime Legacy
+   * specification.
+   *
+   * @return A 60-byte array containing the non-recoverable data to be signed.
+   * @since 0.1.0
+   */
+  byte[] toBytesForSigning() {
+    byte[] data = new byte[60];
+    int offset = 0;
+
+    // KCertType (1 byte)
+    data[offset++] = certType;
+
+    // KCertStructureVersion (1 byte)
+    data[offset++] = structureVersion;
+
+    // KCertIssuerKeyReference (29 bytes)
+    System.arraycopy(issuerKeyReference, 0, data, offset, 29);
+    offset += 29;
+
+    // KCertCardAidSize (1 byte)
+    data[offset++] = cardAidSize;
+
+    // KCertCardAidValue (16 bytes)
+    System.arraycopy(cardAidValue, 0, data, offset, 16);
+    offset += 16;
+
+    // KCertCardSerialNumber (8 bytes)
+    if (cardSerialNumber != null) {
+      System.arraycopy(cardSerialNumber, 0, data, offset, 8);
+    }
+    offset += 8;
+
+    // KCertCardIndex (4 bytes)
+    System.arraycopy(cardIndex, 0, data, offset, 4);
+
+    return data;
+  }
+
+  /**
+   * Serializes the complete certificate to bytes (with signature).
+   *
+   * <p>This represents the full 316-byte Card certificate according to the Calypso Prime Legacy
+   * specification.
+   *
+   * @return A 316-byte array containing the complete certificate.
+   * @since 0.1.0
+   */
+  byte[] toBytes() {
+    byte[] serialized = new byte[316];
+    int offset = 0;
+
+    // Copy the non-recoverable data (60 bytes)
+    byte[] dataForSigning = toBytesForSigning();
+    System.arraycopy(dataForSigning, 0, serialized, offset, 60);
+    offset += 60;
+
+    // KCertSignature (256 bytes)
+    System.arraycopy(signature, 0, serialized, offset, 256);
+
+    return serialized;
   }
 
   /**

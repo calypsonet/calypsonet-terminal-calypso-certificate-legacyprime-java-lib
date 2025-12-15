@@ -1,5 +1,5 @@
 /* **************************************************************************************
- * Copyright (c) 2024 Calypso Networks Association https://calypsonet.org/
+ * Copyright (c) 2025 Calypso Networks Association https://calypsonet.org/
  *
  * See the NOTICE file(s) distributed with this work for additional information
  * regarding copyright ownership.
@@ -52,23 +52,26 @@ final class CaCertificate {
   private CaCertificate(Builder builder) {
     this.certType = builder.certType;
     this.structureVersion = builder.structureVersion;
-    this.issuerKeyReference = builder.issuerKeyReference.clone();
-    this.caTargetKeyReference = builder.caTargetKeyReference.clone();
+    this.issuerKeyReference =
+        builder.issuerKeyReference != null ? builder.issuerKeyReference.clone() : null;
+    this.caTargetKeyReference =
+        builder.caTargetKeyReference != null ? builder.caTargetKeyReference.clone() : null;
     this.caAidSize = builder.caAidSize;
-    this.caAidValue = builder.caAidValue.clone();
-    this.caSerialNumber = builder.caSerialNumber.clone();
-    this.caKeyId = builder.caKeyId.clone();
-    this.startDate = builder.startDate.clone();
-    this.caRfu1 = builder.caRfu1.clone();
+    this.caAidValue = builder.caAidValue != null ? builder.caAidValue.clone() : null;
+    this.caSerialNumber = builder.caSerialNumber != null ? builder.caSerialNumber.clone() : null;
+    this.caKeyId = builder.caKeyId != null ? builder.caKeyId.clone() : null;
+    this.startDate = builder.startDate != null ? builder.startDate.clone() : null;
+    this.caRfu1 = builder.caRfu1 != null ? builder.caRfu1.clone() : null;
     this.caRights = builder.caRights;
     this.caScope = builder.caScope;
-    this.endDate = builder.endDate.clone();
+    this.endDate = builder.endDate != null ? builder.endDate.clone() : null;
     this.caTargetAidSize = builder.caTargetAidSize;
-    this.caTargetAidValue = builder.caTargetAidValue.clone();
+    this.caTargetAidValue =
+        builder.caTargetAidValue != null ? builder.caTargetAidValue.clone() : null;
     this.caOperatingMode = builder.caOperatingMode;
-    this.caRfu2 = builder.caRfu2.clone();
-    this.publicKeyHeader = builder.publicKeyHeader.clone();
-    this.signature = builder.signature.clone();
+    this.caRfu2 = builder.caRfu2 != null ? builder.caRfu2.clone() : null;
+    this.publicKeyHeader = builder.publicKeyHeader != null ? builder.publicKeyHeader.clone() : null;
+    this.signature = builder.signature != null ? builder.signature.clone() : null;
     this.rsaPublicKey = builder.rsaPublicKey;
   }
 
@@ -272,6 +275,99 @@ final class CaCertificate {
    */
   RSAPublicKey getRsaPublicKey() {
     return rsaPublicKey;
+  }
+
+  /**
+   * Serializes the certificate fields to bytes (without signature).
+   *
+   * <p>This represents the data that must be signed according to the Calypso Prime Legacy
+   * specification (128 bytes from KCertType to KCertPublicKeyHeader).
+   *
+   * @return A 128-byte array containing the certificate data to be signed.
+   * @since 0.1.0
+   */
+  byte[] toBytesForSigning() {
+    byte[] data = new byte[128];
+    int offset = 0;
+
+    // KCertType (1 byte)
+    data[offset++] = certType;
+
+    // KCertStructureVersion (1 byte)
+    data[offset++] = structureVersion;
+
+    // KCertIssuerKeyReference (29 bytes)
+    System.arraycopy(issuerKeyReference, 0, data, offset, 29);
+    offset += 29;
+
+    // KCertCaTargetKeyReference (29 bytes)
+    System.arraycopy(caTargetKeyReference, 0, data, offset, 29);
+    offset += 29;
+
+    // KCertStartDate (4 bytes)
+    if (startDate != null) {
+      System.arraycopy(startDate, 0, data, offset, 4);
+    }
+    offset += 4;
+
+    // KCertCaRfu1 (4 bytes)
+    System.arraycopy(caRfu1, 0, data, offset, 4);
+    offset += 4;
+
+    // KCertCaRights (1 byte)
+    data[offset++] = caRights;
+
+    // KCertCaScope (1 byte)
+    data[offset++] = caScope;
+
+    // KCertEndDate (4 bytes)
+    if (endDate != null) {
+      System.arraycopy(endDate, 0, data, offset, 4);
+    }
+    offset += 4;
+
+    // KCertCaTargetAidSize (1 byte)
+    data[offset++] = caTargetAidSize;
+
+    // KCertCaTargetAidValue (16 bytes)
+    System.arraycopy(caTargetAidValue, 0, data, offset, 16);
+    offset += 16;
+
+    // KCertCaOperatingMode (1 byte)
+    data[offset++] = caOperatingMode;
+
+    // KCertCaRfu2 (2 bytes)
+    System.arraycopy(caRfu2, 0, data, offset, 2);
+    offset += 2;
+
+    // KCertPublicKeyHeader (34 bytes)
+    System.arraycopy(publicKeyHeader, 0, data, offset, 34);
+
+    return data;
+  }
+
+  /**
+   * Serializes the complete certificate to bytes (with signature).
+   *
+   * <p>This represents the full 384-byte CA certificate according to the Calypso Prime Legacy
+   * specification.
+   *
+   * @return A 384-byte array containing the complete certificate.
+   * @since 0.1.0
+   */
+  byte[] toBytes() {
+    byte[] serialized = new byte[384];
+    int offset = 0;
+
+    // Copy the data to be signed (128 bytes)
+    byte[] dataForSigning = toBytesForSigning();
+    System.arraycopy(dataForSigning, 0, serialized, offset, 128);
+    offset += 128;
+
+    // KCertSignature (256 bytes)
+    System.arraycopy(signature, 0, serialized, offset, 256);
+
+    return serialized;
   }
 
   /**

@@ -1,5 +1,5 @@
 /* **************************************************************************************
- * Copyright (c) 2024 Calypso Networks Association https://calypsonet.org/
+ * Copyright (c) 2025 Calypso Networks Association https://calypsonet.org/
  *
  * See the NOTICE file(s) distributed with this work for additional information
  * regarding copyright ownership.
@@ -277,50 +277,7 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
    */
   private byte[] buildRecoverableData() {
     CardCertificate tempCert = certificateBuilder.build();
-    byte[] data = new byte[222];
-    int offset = 0;
-
-    // KCertStartDate (4 bytes)
-    byte[] startDate = tempCert.getStartDate();
-    if (startDate != null) {
-      System.arraycopy(startDate, 0, data, offset, 4);
-    }
-    offset += 4;
-
-    // KCertEndDate (4 bytes)
-    byte[] endDate = tempCert.getEndDate();
-    if (endDate != null) {
-      System.arraycopy(endDate, 0, data, offset, 4);
-    }
-    offset += 4;
-
-    // KCertCardRights (1 byte)
-    data[offset++] = tempCert.getCardRights();
-
-    // KCertCardInfo (7 bytes)
-    byte[] cardInfo = tempCert.getCardInfo();
-    if (cardInfo != null) {
-      System.arraycopy(cardInfo, 0, data, offset, 7);
-    }
-    offset += 7;
-
-    // KCertCardRfu (18 bytes)
-    byte[] cardRfu = tempCert.getCardRfu();
-    System.arraycopy(cardRfu, 0, data, offset, 18);
-    offset += 18;
-
-    // KCertEccPublicKey (64 bytes)
-    byte[] eccPublicKey = tempCert.getEccPublicKey();
-    if (eccPublicKey != null) {
-      System.arraycopy(eccPublicKey, 0, data, offset, 64);
-    }
-    offset += 64;
-
-    // KCertEccRfu (124 bytes)
-    byte[] eccRfu = tempCert.getEccRfu();
-    System.arraycopy(eccRfu, 0, data, offset, 124);
-
-    return data;
+    return tempCert.getRecoverableDataForSigning();
   }
 
   /**
@@ -330,40 +287,7 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
    */
   private byte[] buildNonRecoverableData() {
     CardCertificate tempCert = certificateBuilder.build();
-    byte[] data = new byte[60];
-    int offset = 0;
-
-    // KCertType (1 byte)
-    data[offset++] = tempCert.getCertType();
-
-    // KCertStructureVersion (1 byte)
-    data[offset++] = tempCert.getStructureVersion();
-
-    // KCertIssuerKeyReference (29 bytes)
-    byte[] issuerKeyRef = tempCert.getIssuerKeyReference();
-    System.arraycopy(issuerKeyRef, 0, data, offset, 29);
-    offset += 29;
-
-    // KCertCardAidSize (1 byte)
-    data[offset++] = tempCert.getCardAidSize();
-
-    // KCertCardAidValue (16 bytes)
-    byte[] cardAidValue = tempCert.getCardAidValue();
-    System.arraycopy(cardAidValue, 0, data, offset, 16);
-    offset += 16;
-
-    // KCertCardSerialNumber (8 bytes)
-    byte[] cardSerialNumber = tempCert.getCardSerialNumber();
-    if (cardSerialNumber != null) {
-      System.arraycopy(cardSerialNumber, 0, data, offset, 8);
-    }
-    offset += 8;
-
-    // KCertCardIndex (4 bytes)
-    byte[] cardIndex = tempCert.getCardIndex();
-    System.arraycopy(cardIndex, 0, data, offset, 4);
-
-    return data;
+    return tempCert.toBytesForSigning();
   }
 
   /**
@@ -373,44 +297,6 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
    * @return The serialized certificate.
    */
   private byte[] serializeCardCertificate(CardCertificate certificate) {
-    byte[] serialized = new byte[316];
-    int offset = 0;
-
-    // KCertType (1 byte)
-    serialized[offset++] = certificate.getCertType();
-
-    // KCertStructureVersion (1 byte)
-    serialized[offset++] = certificate.getStructureVersion();
-
-    // KCertIssuerKeyReference (29 bytes)
-    byte[] issuerKeyRef = certificate.getIssuerKeyReference();
-    System.arraycopy(issuerKeyRef, 0, serialized, offset, 29);
-    offset += 29;
-
-    // KCertCardAidSize (1 byte)
-    serialized[offset++] = certificate.getCardAidSize();
-
-    // KCertCardAidValue (16 bytes)
-    byte[] cardAidValue = certificate.getCardAidValue();
-    System.arraycopy(cardAidValue, 0, serialized, offset, 16);
-    offset += 16;
-
-    // KCertCardSerialNumber (8 bytes)
-    byte[] cardSerialNumber = certificate.getCardSerialNumber();
-    if (cardSerialNumber != null) {
-      System.arraycopy(cardSerialNumber, 0, serialized, offset, 8);
-    }
-    offset += 8;
-
-    // KCertCardIndex (4 bytes)
-    byte[] cardIndex = certificate.getCardIndex();
-    System.arraycopy(cardIndex, 0, serialized, offset, 4);
-    offset += 4;
-
-    // KCertSignature (256 bytes)
-    byte[] signature = certificate.getSignature();
-    System.arraycopy(signature, 0, serialized, offset, 256);
-
-    return serialized;
+    return certificate.toBytes();
   }
 }

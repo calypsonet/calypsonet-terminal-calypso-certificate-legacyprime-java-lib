@@ -1,5 +1,5 @@
 /* **************************************************************************************
- * Copyright (c) 2024 Calypso Networks Association https://calypsonet.org/
+ * Copyright (c) 2025 Calypso Networks Association https://calypsonet.org/
  *
  * See the NOTICE file(s) distributed with this work for additional information
  * regarding copyright ownership.
@@ -272,71 +272,7 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
    */
   private byte[] buildCertificateDataForSigning() {
     CaCertificate tempCert = certificateBuilder.build();
-    byte[] data = new byte[128];
-    int offset = 0;
-
-    // KCertType (1 byte)
-    data[offset++] = tempCert.getCertType();
-
-    // KCertStructureVersion (1 byte)
-    data[offset++] = tempCert.getStructureVersion();
-
-    // KCertIssuerKeyReference (29 bytes)
-    byte[] issuerKeyRef = tempCert.getIssuerKeyReference();
-    System.arraycopy(issuerKeyRef, 0, data, offset, 29);
-    offset += 29;
-
-    // KCertCaTargetKeyReference (29 bytes)
-    byte[] caTargetKeyRef = tempCert.getCaTargetKeyReference();
-    System.arraycopy(caTargetKeyRef, 0, data, offset, 29);
-    offset += 29;
-
-    // KCertStartDate (4 bytes)
-    byte[] startDate = tempCert.getStartDate();
-    if (startDate != null) {
-      System.arraycopy(startDate, 0, data, offset, 4);
-    }
-    offset += 4;
-
-    // KCertCaRfu1 (4 bytes)
-    byte[] caRfu1 = tempCert.getCaRfu1();
-    System.arraycopy(caRfu1, 0, data, offset, 4);
-    offset += 4;
-
-    // KCertCaRights (1 byte)
-    data[offset++] = tempCert.getCaRights();
-
-    // KCertCaScope (1 byte)
-    data[offset++] = tempCert.getCaScope();
-
-    // KCertEndDate (4 bytes)
-    byte[] endDate = tempCert.getEndDate();
-    if (endDate != null) {
-      System.arraycopy(endDate, 0, data, offset, 4);
-    }
-    offset += 4;
-
-    // KCertCaTargetAidSize (1 byte)
-    data[offset++] = tempCert.getCaTargetAidSize();
-
-    // KCertCaTargetAidValue (16 bytes)
-    byte[] caTargetAidValue = tempCert.getCaTargetAidValue();
-    System.arraycopy(caTargetAidValue, 0, data, offset, 16);
-    offset += 16;
-
-    // KCertCaOperatingMode (1 byte)
-    data[offset++] = tempCert.getCaOperatingMode();
-
-    // KCertCaRfu2 (2 bytes)
-    byte[] caRfu2 = tempCert.getCaRfu2();
-    System.arraycopy(caRfu2, 0, data, offset, 2);
-    offset += 2;
-
-    // KCertPublicKeyHeader (34 bytes)
-    byte[] publicKeyHeader = tempCert.getPublicKeyHeader();
-    System.arraycopy(publicKeyHeader, 0, data, offset, 34);
-
-    return data;
+    return tempCert.toBytesForSigning();
   }
 
   /**
@@ -346,75 +282,6 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
    * @return The serialized certificate.
    */
   private byte[] serializeCaCertificate(CaCertificate certificate) {
-    byte[] serialized = new byte[384];
-    int offset = 0;
-
-    // KCertType (1 byte)
-    serialized[offset++] = certificate.getCertType();
-
-    // KCertStructureVersion (1 byte)
-    serialized[offset++] = certificate.getStructureVersion();
-
-    // KCertIssuerKeyReference (29 bytes)
-    byte[] issuerKeyRef = certificate.getIssuerKeyReference();
-    System.arraycopy(issuerKeyRef, 0, serialized, offset, 29);
-    offset += 29;
-
-    // KCertCaTargetKeyReference (29 bytes)
-    byte[] caTargetKeyRef = certificate.getCaTargetKeyReference();
-    System.arraycopy(caTargetKeyRef, 0, serialized, offset, 29);
-    offset += 29;
-
-    // KCertStartDate (4 bytes)
-    byte[] startDate = certificate.getStartDate();
-    if (startDate != null) {
-      System.arraycopy(startDate, 0, serialized, offset, 4);
-    }
-    offset += 4;
-
-    // KCertCaRfu1 (4 bytes)
-    byte[] caRfu1 = certificate.getCaRfu1();
-    System.arraycopy(caRfu1, 0, serialized, offset, 4);
-    offset += 4;
-
-    // KCertCaRights (1 byte)
-    serialized[offset++] = certificate.getCaRights();
-
-    // KCertCaScope (1 byte)
-    serialized[offset++] = certificate.getCaScope();
-
-    // KCertEndDate (4 bytes)
-    byte[] endDate = certificate.getEndDate();
-    if (endDate != null) {
-      System.arraycopy(endDate, 0, serialized, offset, 4);
-    }
-    offset += 4;
-
-    // KCertCaTargetAidSize (1 byte)
-    serialized[offset++] = certificate.getCaTargetAidSize();
-
-    // KCertCaTargetAidValue (16 bytes)
-    byte[] caTargetAidValue = certificate.getCaTargetAidValue();
-    System.arraycopy(caTargetAidValue, 0, serialized, offset, 16);
-    offset += 16;
-
-    // KCertCaOperatingMode (1 byte)
-    serialized[offset++] = certificate.getCaOperatingMode();
-
-    // KCertCaRfu2 (2 bytes)
-    byte[] caRfu2 = certificate.getCaRfu2();
-    System.arraycopy(caRfu2, 0, serialized, offset, 2);
-    offset += 2;
-
-    // KCertPublicKeyHeader (34 bytes)
-    byte[] publicKeyHeader = certificate.getPublicKeyHeader();
-    System.arraycopy(publicKeyHeader, 0, serialized, offset, 34);
-    offset += 34;
-
-    // KCertSignature (256 bytes)
-    byte[] signature = certificate.getSignature();
-    System.arraycopy(signature, 0, serialized, offset, 256);
-
-    return serialized;
+    return certificate.toBytes();
   }
 }

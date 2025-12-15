@@ -1,5 +1,5 @@
 /* **************************************************************************************
- * Copyright (c) 2024 Calypso Networks Association https://calypsonet.org/
+ * Copyright (c) 2025 Calypso Networks Association https://calypsonet.org/
  *
  * See the NOTICE file(s) distributed with this work for additional information
  * regarding copyright ownership.
@@ -143,18 +143,6 @@ class CalypsoCertificateLegacyPrimeStoreAdapterTest {
         .withMessageContaining("256");
   }
 
-  @Test
-  void
-      addPcaPublicKeyFromModulus_whenParametersAreValid_shouldThrowUnsupportedOperationException() {
-    // Given
-    byte[] modulus = new byte[256];
-
-    // When & Then - Method not yet implemented
-    assertThatExceptionOfType(UnsupportedOperationException.class)
-        .isThrownBy(() -> store.addPcaPublicKey(validKeyReference, modulus))
-        .withMessageContaining("Not yet implemented");
-  }
-
   // Tests for addCalypsoCaCertificateLegacyPrime(byte[])
 
   @Test
@@ -174,17 +162,6 @@ class CalypsoCertificateLegacyPrimeStoreAdapterTest {
     assertThatIllegalArgumentException()
         .isThrownBy(() -> store.addCalypsoCaCertificateLegacyPrime(invalidCertificate))
         .withMessageContaining("384");
-  }
-
-  @Test
-  void addCalypsoCaCertificate_whenCertificateIsValid_shouldThrowUnsupportedOperationException() {
-    // Given
-    byte[] certificate = new byte[384];
-
-    // When & Then - Method not yet implemented
-    assertThatExceptionOfType(UnsupportedOperationException.class)
-        .isThrownBy(() -> store.addCalypsoCaCertificateLegacyPrime(certificate))
-        .withMessageContaining("Not yet implemented");
   }
 
   // Tests for helper methods

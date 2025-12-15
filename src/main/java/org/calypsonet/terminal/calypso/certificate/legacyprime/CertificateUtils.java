@@ -1,5 +1,5 @@
 /* **************************************************************************************
- * Copyright (c) 2024 Calypso Networks Association https://calypsonet.org/
+ * Copyright (c) 2025 Calypso Networks Association https://calypsonet.org/
  *
  * See the NOTICE file(s) distributed with this work for additional information
  * regarding copyright ownership.
@@ -10,6 +10,12 @@
  * SPDX-License-Identifier: EPL-2.0
  ************************************************************************************** */
 package org.calypsonet.terminal.calypso.certificate.legacyprime;
+
+import java.math.BigInteger;
+import java.security.KeyFactory;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.RSAPublicKeySpec;
+import org.eclipse.keyple.core.util.Assert;
 
 /**
  * Utility class containing common methods for certificate generation and manipulation.
@@ -28,6 +34,44 @@ final class CertificateUtils {
    */
   private CertificateUtils() {
     // Utility class
+  }
+
+  /**
+   * Validates that the provided RSA public key is a valid 2048-bit key with an exponent of 65537.
+   *
+   * @param rsaPublicKey The RSA public key to validate.
+   * @throws IllegalArgumentException if the key is not a 2048-bit RSA key or if the exponent is not
+   *     65537.
+   * @since 0.1.0
+   */
+  static void checkRSA2048PublicKey(RSAPublicKey rsaPublicKey) {
+    Assert.getInstance()
+        .notNull(rsaPublicKey, "rsaPublicKey")
+        .isEqual(rsaPublicKey.getModulus().bitLength(), 2048, "RSA public key modulus bit length")
+        .isEqual(rsaPublicKey.getPublicExponent().intValue(), 65537, "RSA public key exponent");
+  }
+
+  /**
+   * Creates a 2048-bit RSA public key with a public exponent of 65537 from the provided modulus
+   * value.
+   *
+   * @param modulus A 256-byte array representing the modulus value.
+   * @return A non-null {@link RSAPublicKey} instance.
+   * @throws IllegalArgumentException if the provided modulus is invalid or if an error occurred
+   *     during the cryptographic operations.
+   * @since 0.1.0
+   */
+  static RSAPublicKey generateRSAPublicKeyFromModulus(byte[] modulus) {
+    try {
+      BigInteger modulusBigInt = new BigInteger(1, modulus);
+      BigInteger publicExponent = BigInteger.valueOf(65537);
+
+      RSAPublicKeySpec keySpec = new RSAPublicKeySpec(modulusBigInt, publicExponent);
+      KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+      return (RSAPublicKey) keyFactory.generatePublic(keySpec);
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Failed to create RSA public key from modulus", e);
+    }
   }
 
   /**
