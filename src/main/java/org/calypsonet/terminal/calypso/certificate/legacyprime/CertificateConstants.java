@@ -72,6 +72,12 @@ final class CertificateConstants {
   /** Size of modulus bytes encoded in signature (222). */
   static final int RSA_MODULUS_IN_SIGNATURE_SIZE = 222;
 
+  /** Key algorithm name for RSA. */
+  static final String KEY_ALGORITHM_RSA = "RSA";
+
+  /** RSA transformation string for raw RSA operations. */
+  static final String RSA_TRANSFORMATION = "RSA/ECB/NoPadding";
+
   // ==================== ECC Cryptography ====================
 
   /** ECC public key size in bytes (64). */

@@ -100,35 +100,33 @@ final class CalypsoCertificateLegacyPrimeStoreAdapter
         .isEqual(
             caCertificate.length, CertificateConstants.CA_CERTIFICATE_SIZE, "caCertificate length");
 
-    // Parse the CA certificate
-    CaCertificate certificate = CaCertificate.fromBytes(caCertificate);
-
-    // Verify certificate type and version
-    if (certificate.getCertType() != CertificateConstants.CERT_TYPE_CA) {
-      throw new IllegalArgumentException(
-          "Invalid certificate type: expected 0x90, got "
-              + String.format("%02X", certificate.getCertType()));
-    }
-    if (certificate.getStructureVersion() != CertificateConstants.STRUCTURE_VERSION) {
-      throw new IllegalArgumentException(
-          "Invalid certificate version: expected 0x01, got "
-              + String.format("%02X", certificate.getStructureVersion()));
-    }
-
-    // Verify the signature using the issuer's public key
-    byte[] issuerKeyRef = certificate.getIssuerKeyReference();
+    // Manually extract the issuer key reference to find the public key needed for parsing
+    byte[] issuerKeyRef = new byte[CertificateConstants.KEY_REFERENCE_SIZE];
+    System.arraycopy(
+        caCertificate,
+        2, // Offset of KCertIssuerKeyReference (Type + Version)
+        issuerKeyRef,
+        0,
+        CertificateConstants.KEY_REFERENCE_SIZE);
     RSAPublicKey issuerPublicKey = getPublicKey(issuerKeyRef);
     if (issuerPublicKey == null) {
       throw new IllegalStateException(
           "Issuer public key not found in store: " + HexUtil.toHex(issuerKeyRef));
     }
 
-    // Build the data that was signed (128 bytes)
-    byte[] dataToVerify = certificate.toBytesForSigning();
+    // Parse the CA certificate using the issuer's public key
+    CaCertificate certificate = CaCertificate.fromBytes(caCertificate, issuerPublicKey);
 
-    // Verify the signature
-    if (!verifySignature(issuerPublicKey, dataToVerify, certificate.getSignature())) {
-      throw new IllegalArgumentException("CA certificate signature verification failed");
+    // Verify certificate type and version
+    if (certificate.getCertType() != CertificateConstants.CERT_TYPE_CA) {
+      throw new IllegalArgumentException(
+          "Invalid certificate type: expected 0x90, got "
+              + HexUtil.toHex(certificate.getCertType()));
+    }
+    if (certificate.getStructureVersion() != CertificateConstants.STRUCTURE_VERSION) {
+      throw new IllegalArgumentException(
+          "Invalid certificate version: expected 0x01, got "
+              + HexUtil.toHex(certificate.getStructureVersion()));
     }
 
     // Extract the CA target key reference
@@ -142,25 +140,6 @@ final class CalypsoCertificateLegacyPrimeStoreAdapter
     caCertificates.put(keyRef, certificate);
 
     return caTargetKeyRef;
-  }
-
-  /**
-   * Verifies an RSA signature.
-   *
-   * @param publicKey The public key to verify with.
-   * @param data The data that was signed.
-   * @param signature The signature to verify.
-   * @return true if the signature is valid, false otherwise.
-   */
-  private boolean verifySignature(RSAPublicKey publicKey, byte[] data, byte[] signature) {
-    try {
-      java.security.Signature sig = java.security.Signature.getInstance("NONEwithRSA");
-      sig.initVerify(publicKey);
-      sig.update(data);
-      return sig.verify(signature);
-    } catch (Exception e) {
-      return false;
-    }
   }
 
   /**

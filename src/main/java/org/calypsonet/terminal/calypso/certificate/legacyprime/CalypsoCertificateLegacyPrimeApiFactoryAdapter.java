@@ -67,10 +67,10 @@ final class CalypsoCertificateLegacyPrimeApiFactoryAdapter
     }
 
     // Verify that the issuer certificate is valid for signing CA certificates
-    CaCertificate issuerCert = store.getCaCertificate(issuerPublicKeyReference);
-    if (issuerCert != null) {
+    CaCertificate issuerCaCert = store.getCaCertificate(issuerPublicKeyReference);
+    if (issuerCaCert != null) {
       // Check CA rights - bits b1-b0 for CA certificate signing
-      byte caRights = issuerCert.getCaRights();
+      byte caRights = issuerCaCert.getCaRights();
       int caCertRight = caRights & CertificateConstants.MASK_TWO_BITS; // Extract bits b1-b0
 
       // %00 = CA cert signing right not specified
@@ -79,10 +79,10 @@ final class CalypsoCertificateLegacyPrimeApiFactoryAdapter
       // %11 = RFU
       if (caCertRight == CertificateConstants.CERT_RIGHT_SHALL_NOT_SIGN) {
         throw new IllegalStateException(
-            "Issuer certificate does not have the right to sign CA certificates");
+            "Issuer CA certificate does not have the right to sign CA certificates");
       }
     }
-    // If issuerCert is null, it means we're using a PCA public key, which is allowed
+    // If issuerCaCert is null, it means we're using a PCA public key, which is allowed
 
     return new CalypsoCaCertificateLegacyPrimeGeneratorAdapter(
         store, issuerPublicKeyReference, caCertificateSigner);

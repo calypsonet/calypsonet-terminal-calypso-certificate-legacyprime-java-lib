@@ -383,7 +383,7 @@ final class CaCertificate {
    * @throws IllegalArgumentException if the certificate data is invalid.
    * @since 0.1.0
    */
-  static CaCertificate fromBytes(byte[] caCertificate) {
+  static CaCertificate fromBytes(byte[] caCertificate, RSAPublicKey issuerPublicKey) {
     if (caCertificate == null || caCertificate.length != CertificateConstants.CA_CERTIFICATE_SIZE) {
       throw new IllegalArgumentException(
           "CA certificate must be "
@@ -475,9 +475,9 @@ final class CaCertificate {
     offset += CertificateConstants.CA_RFU2_SIZE;
 
     // KCertPublicKeyHeader (34 bytes)
-    byte[] publicKeyHeader = new byte[CertificateConstants.PUBLIC_KEY_HEADER_SIZE];
+    byte[] caPublicKeyHeader = new byte[CertificateConstants.PUBLIC_KEY_HEADER_SIZE];
     System.arraycopy(
-        caCertificate, offset, publicKeyHeader, 0, CertificateConstants.PUBLIC_KEY_HEADER_SIZE);
+        caCertificate, offset, caPublicKeyHeader, 0, CertificateConstants.PUBLIC_KEY_HEADER_SIZE);
     offset += CertificateConstants.PUBLIC_KEY_HEADER_SIZE;
 
     // KCertSignature (256 bytes)
@@ -486,7 +486,8 @@ final class CaCertificate {
 
     // Reconstruct the RSA public key from the public key header and signature
     RSAPublicKey rsaPublicKey =
-        CertificateUtils.reconstructRsaPublicKeyFromSignature(publicKeyHeader, signature);
+        CertificateUtils.checkCaCertificateSignatureAndRecoverRsaPublicKey(
+            caCertificate, caPublicKeyHeader, issuerPublicKey);
 
     return CaCertificate.builder()
         .certType(certType)
@@ -506,7 +507,7 @@ final class CaCertificate {
         .caTargetAidValue(caTargetAidValue)
         .caOperatingMode(caOperatingMode)
         .caRfu2(caRfu2)
-        .publicKeyHeader(publicKeyHeader)
+        .publicKeyHeader(caPublicKeyHeader)
         .signature(signature)
         .rsaPublicKey(rsaPublicKey)
         .build();
