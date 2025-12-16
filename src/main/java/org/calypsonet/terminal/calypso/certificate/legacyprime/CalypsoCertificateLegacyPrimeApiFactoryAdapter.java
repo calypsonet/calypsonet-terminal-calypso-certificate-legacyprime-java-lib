@@ -79,7 +79,11 @@ final class CalypsoCertificateLegacyPrimeApiFactoryAdapter
       // %11 = RFU
       if (caCertRight == CertificateConstants.CERT_RIGHT_SHALL_NOT_SIGN) {
         throw new IllegalStateException(
-            "Issuer CA certificate does not have the right to sign CA certificates");
+            "Issuer CA certificate does not have the right to sign CA certificates.");
+      }
+      if (caCertRight == CertificateConstants.CERT_RIGHT_RFU) {
+        throw new IllegalStateException(
+            "Issuer CA certificate has an RFU value for CA cert right.");
       }
     }
     // If issuerCaCert is null, it means we're using a PCA public key, which is allowed
@@ -126,6 +130,9 @@ final class CalypsoCertificateLegacyPrimeApiFactoryAdapter
       if (cardCertRight == CertificateConstants.CERT_RIGHT_SHALL_NOT_SIGN) {
         throw new IllegalStateException(
             "Issuer certificate does not have the right to sign card certificates");
+      }
+      if (cardCertRight == CertificateConstants.CERT_RIGHT_RFU) {
+        throw new IllegalStateException("Issuer certificate has an RFU value for card cert right.");
       }
     }
     // If issuerCert is null, it means we're using a PCA public key, which is allowed

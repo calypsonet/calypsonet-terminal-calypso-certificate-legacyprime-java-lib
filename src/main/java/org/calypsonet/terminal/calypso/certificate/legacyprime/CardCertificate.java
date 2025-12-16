@@ -272,7 +272,7 @@ final class CardCertificate {
    * @since 0.1.0
    */
   byte[] getRecoverableDataForSigning() {
-    byte[] data = new byte[CertificateConstants.CARD_RECOVERABLE_DATA_SIZE];
+    byte[] data = new byte[CertificateConstants.RECOVERABLE_DATA_SIZE];
     int offset = 0;
 
     // KCertStartDate (4 bytes)

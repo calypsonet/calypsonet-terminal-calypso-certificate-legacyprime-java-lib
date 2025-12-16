@@ -28,7 +28,7 @@ class CalypsoCertificateLegacyPrimeApiFactoryAdapterTest {
   @Mock private CalypsoCertificateLegacyPrimeSigner signer;
 
   private CalypsoCertificateLegacyPrimeApiFactoryAdapter factory;
-  private byte[] issuerPublicKeyReference;
+  private byte[] pcaPublicKeyReference;
   private RSAPublicKey validRsaPublicKey;
 
   @BeforeEach
@@ -48,12 +48,12 @@ class CalypsoCertificateLegacyPrimeApiFactoryAdapterTest {
     KeyFactory keyFactory = KeyFactory.getInstance("RSA");
     validRsaPublicKey = (RSAPublicKey) keyFactory.generatePublic(spec);
 
-    issuerPublicKeyReference = new byte[] {0x01, 0x02, 0x03};
+    pcaPublicKeyReference = new byte[] {0x01, 0x02, 0x03};
 
     // Add issuer key to store
     factory
         .getCalypsoCertificateLegacyPrimeStore()
-        .addPcaPublicKey(issuerPublicKeyReference, validRsaPublicKey);
+        .addPcaPublicKey(pcaPublicKeyReference, validRsaPublicKey);
   }
 
   // Tests for getCalypsoCertificateLegacyPrimeStore
@@ -83,7 +83,7 @@ class CalypsoCertificateLegacyPrimeApiFactoryAdapterTest {
   void createCalypsoCaCertificateGenerator_whenParametersAreValid_shouldReturnNonNullGenerator() {
     // When
     CalypsoCaCertificateLegacyPrimeGenerator generator =
-        factory.createCalypsoCaCertificateLegacyPrimeGenerator(issuerPublicKeyReference, signer);
+        factory.createCalypsoCaCertificateLegacyPrimeGenerator(pcaPublicKeyReference, signer);
 
     // Then
     assertThat(generator).isNotNull();
@@ -104,8 +104,7 @@ class CalypsoCertificateLegacyPrimeApiFactoryAdapterTest {
     assertThatIllegalArgumentException()
         .isThrownBy(
             () ->
-                factory.createCalypsoCaCertificateLegacyPrimeGenerator(
-                    issuerPublicKeyReference, null))
+                factory.createCalypsoCaCertificateLegacyPrimeGenerator(pcaPublicKeyReference, null))
         .withMessageContaining("caCertificateSigner");
   }
 
@@ -127,9 +126,9 @@ class CalypsoCertificateLegacyPrimeApiFactoryAdapterTest {
       createCalypsoCaCertificateGenerator_whenCalledMultipleTimes_shouldReturnDifferentInstances() {
     // When
     CalypsoCaCertificateLegacyPrimeGenerator generator1 =
-        factory.createCalypsoCaCertificateLegacyPrimeGenerator(issuerPublicKeyReference, signer);
+        factory.createCalypsoCaCertificateLegacyPrimeGenerator(pcaPublicKeyReference, signer);
     CalypsoCaCertificateLegacyPrimeGenerator generator2 =
-        factory.createCalypsoCaCertificateLegacyPrimeGenerator(issuerPublicKeyReference, signer);
+        factory.createCalypsoCaCertificateLegacyPrimeGenerator(pcaPublicKeyReference, signer);
 
     // Then
     assertThat(generator1).isNotSameAs(generator2);
@@ -141,7 +140,7 @@ class CalypsoCertificateLegacyPrimeApiFactoryAdapterTest {
   void createCalypsoCardCertificateGenerator_whenParametersAreValid_shouldReturnNonNullGenerator() {
     // When
     CalypsoCardCertificateLegacyPrimeGenerator generator =
-        factory.createCalypsoCardCertificateLegacyPrimeGenerator(issuerPublicKeyReference, signer);
+        factory.createCalypsoCardCertificateLegacyPrimeGenerator(pcaPublicKeyReference, signer);
 
     // Then
     assertThat(generator).isNotNull();
@@ -164,7 +163,7 @@ class CalypsoCertificateLegacyPrimeApiFactoryAdapterTest {
         .isThrownBy(
             () ->
                 factory.createCalypsoCardCertificateLegacyPrimeGenerator(
-                    issuerPublicKeyReference, null))
+                    pcaPublicKeyReference, null))
         .withMessageContaining("cardCertificateSigner");
   }
 
@@ -187,9 +186,9 @@ class CalypsoCertificateLegacyPrimeApiFactoryAdapterTest {
       createCalypsoCardCertificateGenerator_whenCalledMultipleTimes_shouldReturnDifferentInstances() {
     // When
     CalypsoCardCertificateLegacyPrimeGenerator generator1 =
-        factory.createCalypsoCardCertificateLegacyPrimeGenerator(issuerPublicKeyReference, signer);
+        factory.createCalypsoCardCertificateLegacyPrimeGenerator(pcaPublicKeyReference, signer);
     CalypsoCardCertificateLegacyPrimeGenerator generator2 =
-        factory.createCalypsoCardCertificateLegacyPrimeGenerator(issuerPublicKeyReference, signer);
+        factory.createCalypsoCardCertificateLegacyPrimeGenerator(pcaPublicKeyReference, signer);
 
     // Then
     assertThat(generator1).isNotSameAs(generator2);
@@ -207,11 +206,11 @@ class CalypsoCertificateLegacyPrimeApiFactoryAdapterTest {
 
     // When
     CalypsoCaCertificateLegacyPrimeGenerator caGenerator1 =
-        factory.createCalypsoCaCertificateLegacyPrimeGenerator(issuerPublicKeyReference, signer);
+        factory.createCalypsoCaCertificateLegacyPrimeGenerator(pcaPublicKeyReference, signer);
     CalypsoCaCertificateLegacyPrimeGenerator caGenerator2 =
         factory.createCalypsoCaCertificateLegacyPrimeGenerator(anotherKeyRef, signer);
     CalypsoCardCertificateLegacyPrimeGenerator cardGenerator =
-        factory.createCalypsoCardCertificateLegacyPrimeGenerator(issuerPublicKeyReference, signer);
+        factory.createCalypsoCardCertificateLegacyPrimeGenerator(pcaPublicKeyReference, signer);
 
     // Then - All generators should be created successfully using the shared store
     assertThat(caGenerator1).isNotNull();

@@ -12,7 +12,6 @@
 package org.calypsonet.terminal.calypso.certificate.legacyprime;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 import java.math.BigInteger;
 import java.security.KeyFactory;
@@ -104,7 +103,7 @@ class CalypsoCaCertificateLegacyPrimeGeneratorAdapterTest {
     // When & Then
     assertThatIllegalArgumentException()
         .isThrownBy(() -> generator.withCaPublicKey(caPublicKeyReference, null))
-        .withMessageContaining("caPublicKey");
+        .withMessageContaining("rsaPublicKey");
   }
 
   @Test
@@ -121,6 +120,277 @@ class CalypsoCaCertificateLegacyPrimeGeneratorAdapterTest {
     assertThatIllegalArgumentException()
         .isThrownBy(() -> generator.withCaPublicKey(caPublicKeyReference, invalidKey))
         .withMessageContaining("2048");
+  }
+
+  @Test
+  void withCaPublicKey_whenIssuerHasTargetAidAndTruncationAllowed_andCaAidMatches_shouldSucceed()
+      throws Exception {
+    // Given - Create an issuer CA certificate with target AID and truncation allowed
+    byte[] issuerTargetAidValue = new byte[16];
+    System.arraycopy(
+        new byte[] {(byte) 0xA0, 0x00, 0x00, 0x02, (byte) 0x91, (byte) 0xA0, 0x01, 0x00},
+        0,
+        issuerTargetAidValue,
+        0,
+        8);
+
+    CaCertificate issuerCert =
+        createMockIssuerCertificate((byte) 8, issuerTargetAidValue, (byte) 1); // truncation = 1
+    addCaCertificateToStore(issuerPublicKeyReference, issuerCert);
+
+    // Recreate generator with issuer certificate in store
+    generator =
+        new CalypsoCaCertificateLegacyPrimeGeneratorAdapter(
+            store, issuerPublicKeyReference, signer);
+
+    // CA AID starts with issuer target AID and is longer (11 bytes)
+    byte[] caKeyRef = new byte[29];
+    caKeyRef[0] = 11; // CA AID size
+    System.arraycopy(issuerTargetAidValue, 0, caKeyRef, 1, 8); // Copy first 8 bytes
+    caKeyRef[9] = 0x02; // Additional bytes
+    caKeyRef[10] = 0x40;
+    caKeyRef[11] = 0x01;
+
+    // When & Then - Should not throw
+    assertThatCode(() -> generator.withCaPublicKey(caKeyRef, validRsaPublicKey))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void withCaPublicKey_whenIssuerHasTargetAidAndTruncationForbidden_andCaAidMatches_shouldSucceed()
+      throws Exception {
+    // Given - Create an issuer CA certificate with target AID and truncation forbidden
+    byte[] issuerTargetAidValue = new byte[16];
+    System.arraycopy(
+        new byte[] {(byte) 0xA0, 0x00, 0x00, 0x02, (byte) 0x91, (byte) 0xA0, 0x01, 0x00},
+        0,
+        issuerTargetAidValue,
+        0,
+        8);
+
+    CaCertificate issuerCert =
+        createMockIssuerCertificate((byte) 8, issuerTargetAidValue, (byte) 0); // truncation = 0
+    addCaCertificateToStore(issuerPublicKeyReference, issuerCert);
+
+    // Recreate generator with issuer certificate in store
+    generator =
+        new CalypsoCaCertificateLegacyPrimeGeneratorAdapter(
+            store, issuerPublicKeyReference, signer);
+
+    // CA AID exactly matches issuer target AID (8 bytes)
+    byte[] caKeyRef = new byte[29];
+    caKeyRef[0] = 8; // CA AID size
+    System.arraycopy(issuerTargetAidValue, 0, caKeyRef, 1, 8); // Exact match
+
+    // When & Then - Should not throw
+    assertThatCode(() -> generator.withCaPublicKey(caKeyRef, validRsaPublicKey))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void withCaPublicKey_whenTruncationAllowed_andCaAidTooShort_shouldThrowIllegalArgumentException()
+      throws Exception {
+    // Given
+    byte[] issuerTargetAidValue = new byte[16];
+    System.arraycopy(
+        new byte[] {(byte) 0xA0, 0x00, 0x00, 0x02, (byte) 0x91, (byte) 0xA0, 0x01, 0x00},
+        0,
+        issuerTargetAidValue,
+        0,
+        8);
+
+    CaCertificate issuerCert =
+        createMockIssuerCertificate((byte) 8, issuerTargetAidValue, (byte) 1); // truncation = 1
+    addCaCertificateToStore(issuerPublicKeyReference, issuerCert);
+
+    generator =
+        new CalypsoCaCertificateLegacyPrimeGeneratorAdapter(
+            store, issuerPublicKeyReference, signer);
+
+    // CA AID is too short (6 bytes < 8 bytes)
+    byte[] caKeyRef = new byte[29];
+    caKeyRef[0] = 6; // CA AID size too short
+    System.arraycopy(issuerTargetAidValue, 0, caKeyRef, 1, 6);
+
+    // When & Then
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> generator.withCaPublicKey(caKeyRef, validRsaPublicKey))
+        .withMessageContaining("must be at least");
+  }
+
+  @Test
+  void
+      withCaPublicKey_whenTruncationAllowed_andCaAidDoesNotStartWithIssuerAid_shouldThrowIllegalArgumentException()
+          throws Exception {
+    // Given
+    byte[] issuerTargetAidValue = new byte[16];
+    System.arraycopy(
+        new byte[] {(byte) 0xA0, 0x00, 0x00, 0x02, (byte) 0x91, (byte) 0xA0, 0x01, 0x00},
+        0,
+        issuerTargetAidValue,
+        0,
+        8);
+
+    CaCertificate issuerCert =
+        createMockIssuerCertificate((byte) 8, issuerTargetAidValue, (byte) 1); // truncation = 1
+    addCaCertificateToStore(issuerPublicKeyReference, issuerCert);
+
+    generator =
+        new CalypsoCaCertificateLegacyPrimeGeneratorAdapter(
+            store, issuerPublicKeyReference, signer);
+
+    // CA AID doesn't start with issuer's target AID
+    byte[] caKeyRef = new byte[29];
+    caKeyRef[0] = 11; // CA AID size
+    caKeyRef[1] = (byte) 0xB0; // Different from 0xA0
+    caKeyRef[2] = 0x00;
+
+    // When & Then
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> generator.withCaPublicKey(caKeyRef, validRsaPublicKey))
+        .withMessageContaining("must start with");
+  }
+
+  @Test
+  void
+      withCaPublicKey_whenTruncationForbidden_andCaAidSizeDifferent_shouldThrowIllegalArgumentException()
+          throws Exception {
+    // Given
+    byte[] issuerTargetAidValue = new byte[16];
+    System.arraycopy(
+        new byte[] {(byte) 0xA0, 0x00, 0x00, 0x02, (byte) 0x91, (byte) 0xA0, 0x01, 0x00},
+        0,
+        issuerTargetAidValue,
+        0,
+        8);
+
+    CaCertificate issuerCert =
+        createMockIssuerCertificate((byte) 8, issuerTargetAidValue, (byte) 0); // truncation = 0
+    addCaCertificateToStore(issuerPublicKeyReference, issuerCert);
+
+    generator =
+        new CalypsoCaCertificateLegacyPrimeGeneratorAdapter(
+            store, issuerPublicKeyReference, signer);
+
+    // CA AID has different size
+    byte[] caKeyRef = new byte[29];
+    caKeyRef[0] = 10; // Different size
+    System.arraycopy(issuerTargetAidValue, 0, caKeyRef, 1, 8);
+
+    // When & Then
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> generator.withCaPublicKey(caKeyRef, validRsaPublicKey))
+        .withMessageContaining("must exactly match");
+  }
+
+  @Test
+  void
+      withCaPublicKey_whenTruncationForbidden_andCaAidContentDifferent_shouldThrowIllegalArgumentException()
+          throws Exception {
+    // Given
+    byte[] issuerTargetAidValue = new byte[16];
+    System.arraycopy(
+        new byte[] {(byte) 0xA0, 0x00, 0x00, 0x02, (byte) 0x91, (byte) 0xA0, 0x01, 0x00},
+        0,
+        issuerTargetAidValue,
+        0,
+        8);
+
+    CaCertificate issuerCert =
+        createMockIssuerCertificate((byte) 8, issuerTargetAidValue, (byte) 0); // truncation = 0
+    addCaCertificateToStore(issuerPublicKeyReference, issuerCert);
+
+    generator =
+        new CalypsoCaCertificateLegacyPrimeGeneratorAdapter(
+            store, issuerPublicKeyReference, signer);
+
+    // CA AID has same size but different content
+    byte[] caKeyRef = new byte[29];
+    caKeyRef[0] = 8; // Same size
+    System.arraycopy(issuerTargetAidValue, 0, caKeyRef, 1, 8);
+    caKeyRef[3] = 0x03; // Change one byte (was 0x00)
+
+    // When & Then
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> generator.withCaPublicKey(caKeyRef, validRsaPublicKey))
+        .withMessageContaining("must exactly match");
+  }
+
+  @Test
+  void withCaPublicKey_whenIssuerHasNoTargetAid_shouldNotValidateAid() throws Exception {
+    // Given - Issuer has no specific target AID (0xFF)
+    CaCertificate issuerCert = createMockIssuerCertificate((byte) 0xFF, new byte[16], (byte) 0);
+    addCaCertificateToStore(issuerPublicKeyReference, issuerCert);
+
+    generator =
+        new CalypsoCaCertificateLegacyPrimeGeneratorAdapter(
+            store, issuerPublicKeyReference, signer);
+
+    // CA with any AID
+    byte[] caKeyRef = new byte[29];
+    caKeyRef[0] = 11;
+    caKeyRef[1] = (byte) 0xFF;
+
+    // When & Then - Should not throw (no validation)
+    assertThatCode(() -> generator.withCaPublicKey(caKeyRef, validRsaPublicKey))
+        .doesNotThrowAnyException();
+  }
+
+  /**
+   * Helper method to create a mock issuer certificate with specified AID parameters.
+   *
+   * @param targetAidSize The target AID size.
+   * @param targetAidValue The target AID value (16 bytes).
+   * @param operatingMode The operating mode (bit 0 = truncation flag).
+   * @return A CaCertificate instance.
+   */
+  private CaCertificate createMockIssuerCertificate(
+      byte targetAidSize, byte[] targetAidValue, byte operatingMode) {
+    return CaCertificate.builder()
+        .certType((byte) 0x90)
+        .structureVersion((byte) 0x01)
+        .issuerKeyReference(new byte[29])
+        .caTargetKeyReference(issuerPublicKeyReference)
+        .caAidSize((byte) 0x0B)
+        .caAidValue(new byte[16])
+        .caSerialNumber(new byte[8])
+        .caKeyId(new byte[4])
+        .startDate(new byte[4])
+        .caRfu1(new byte[4])
+        .caRights((byte) 0x00)
+        .caScope((byte) 0xFF)
+        .endDate(new byte[4])
+        .caTargetAidSize(targetAidSize)
+        .caTargetAidValue(targetAidValue)
+        .caOperatingMode(operatingMode)
+        .caRfu2(new byte[2])
+        .publicKeyHeader(new byte[34])
+        .signature(new byte[256])
+        .rsaPublicKey(validRsaPublicKey)
+        .build();
+  }
+
+  /**
+   * Helper method to add a CA certificate directly to the store for testing purposes.
+   *
+   * <p>This method uses reflection to access the private caCertificates map in the store and add
+   * the certificate directly, bypassing signature verification which would fail with mock data.
+   *
+   * @param keyReference The key reference for the certificate.
+   * @param certificate The CaCertificate to add.
+   */
+  private void addCaCertificateToStore(byte[] keyReference, CaCertificate certificate) {
+    try {
+      java.lang.reflect.Field field =
+          CalypsoCertificateLegacyPrimeStoreAdapter.class.getDeclaredField("caCertificates");
+      field.setAccessible(true);
+      @SuppressWarnings("unchecked")
+      java.util.Map<String, CaCertificate> caCertificates =
+          (java.util.Map<String, CaCertificate>) field.get(store);
+      caCertificates.put(org.eclipse.keyple.core.util.HexUtil.toHex(keyReference), certificate);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to add certificate to store for testing", e);
+    }
   }
 
   // Tests for withStartDate
@@ -333,16 +603,15 @@ class CalypsoCaCertificateLegacyPrimeGeneratorAdapterTest {
 
   @Test
   void generate_whenIssuerKeyNotInStore_shouldThrowIllegalStateException() {
-    // Given
+    // Given - Create an issuer reference that doesn't exist in the store
     byte[] unknownIssuerRef = new byte[] {0x09, 0x09, 0x09};
-    CalypsoCaCertificateLegacyPrimeGeneratorAdapter badGenerator =
-        new CalypsoCaCertificateLegacyPrimeGeneratorAdapter(store, unknownIssuerRef, signer);
+    CalypsoCertificateLegacyPrimeApiFactoryAdapter factory =
+        new CalypsoCertificateLegacyPrimeApiFactoryAdapter();
 
-    badGenerator.withCaPublicKey(caPublicKeyReference, validRsaPublicKey);
-
-    // When & Then
+    // When & Then - Factory should throw when issuer key is not in store
     assertThatIllegalStateException()
-        .isThrownBy(() -> badGenerator.generate())
+        .isThrownBy(
+            () -> factory.createCalypsoCaCertificateLegacyPrimeGenerator(unknownIssuerRef, signer))
         .withMessageContaining("not found in store");
   }
 

@@ -49,8 +49,8 @@ final class CertificateConstants {
   /** Size of non-recoverable data for Card certificates in bytes (60). */
   static final int CARD_NON_RECOVERABLE_DATA_SIZE = 60;
 
-  /** Size of recoverable data for Card certificates in bytes (222). */
-  static final int CARD_RECOVERABLE_DATA_SIZE = 222;
+  /** Size of recoverable data for certificates in bytes (222). */
+  static final int RECOVERABLE_DATA_SIZE = 222;
 
   // ==================== RSA Cryptography ====================
 

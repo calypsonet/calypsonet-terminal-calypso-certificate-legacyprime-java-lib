@@ -108,6 +108,7 @@ final class CalypsoCertificateLegacyPrimeStoreAdapter
         issuerKeyRef,
         0,
         CertificateConstants.KEY_REFERENCE_SIZE);
+
     RSAPublicKey issuerPublicKey = getPublicKey(issuerKeyRef);
     if (issuerPublicKey == null) {
       throw new IllegalStateException(

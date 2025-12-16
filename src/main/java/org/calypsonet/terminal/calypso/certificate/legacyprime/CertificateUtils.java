@@ -19,6 +19,7 @@ import java.security.KeyFactory;
 import java.security.Security;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.RSAPublicKeySpec;
+import java.time.LocalDate;
 import java.util.Arrays;
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.crypto.digests.SHA256Digest;
@@ -27,6 +28,7 @@ import org.bouncycastle.crypto.params.RSAKeyParameters;
 import org.bouncycastle.crypto.signers.ISO9796d2PSSSigner;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.eclipse.keyple.core.util.Assert;
+import org.eclipse.keyple.core.util.HexUtil;
 
 /**
  * Utility class containing common methods for certificate generation and manipulation.
@@ -221,5 +223,135 @@ final class CertificateUtils {
     date[2] = (byte) ((month / 10) << 4 | month % 10);
     date[3] = (byte) ((day / 10) << 4 | day % 10);
     return date;
+  }
+
+  /**
+   * Decodes a BCD-encoded date (YYYYMMDD) into a {@link LocalDate}.
+   *
+   * @param bcdDate The 4-byte BCD-encoded date.
+   * @return The corresponding {@link LocalDate}, or {@code null} if the input represents a null
+   *     date (all zeros).
+   * @since 0.1.0
+   */
+  static LocalDate decodeDateBcd(byte[] bcdDate) {
+    Assert.getInstance().notNull(bcdDate, "bcdDate").isEqual(bcdDate.length, 4, "bcdDate length");
+
+    // Check for null date (00000000h)
+    boolean allZeros = true;
+    for (byte b : bcdDate) {
+      if (b != 0) {
+        allZeros = false;
+        break;
+      }
+    }
+    if (allZeros) {
+      return null;
+    }
+
+    int year =
+        ((bcdDate[0] >> 4) & 0x0F) * 1000
+            + (bcdDate[0] & 0x0F) * 100
+            + ((bcdDate[1] >> 4) & 0x0F) * 10
+            + (bcdDate[1] & 0x0F);
+    int month = ((bcdDate[2] >> 4) & 0x0F) * 10 + (bcdDate[2] & 0x0F);
+    int day = ((bcdDate[3] >> 4) & 0x0F) * 10 + (bcdDate[3] & 0x0F);
+
+    return LocalDate.of(year, month, day);
+  }
+
+  /**
+   * Validates that the CA AID respects the issuer's constraints.
+   *
+   * <p>According to the Calypso specification (KCertCaOperatingMode):
+   *
+   * <ul>
+   *   <li>If issuer has no target AID specified (0xFF), no validation is performed
+   *   <li>If truncation is forbidden (bit b0 = 0): CA AID must exactly match issuer's target AID
+   *   <li>If truncation is allowed (bit b0 = 1): CA AID must start with issuer's target AID
+   * </ul>
+   *
+   * @param caPublicKeyReference The CA public key reference containing the CA AID.
+   * @throws IllegalArgumentException if the CA AID does not respect issuer's constraints.
+   */
+  static void validateAidAgainstIssuerConstraints(
+      byte[] caPublicKeyReference, CaCertificate issuerCaCertificate) {
+    // If no issuer certificate, no validation needed (root CA case)
+    if (issuerCaCertificate == null) {
+      return;
+    }
+
+    byte issuerTargetAidSize = issuerCaCertificate.getCaTargetAidSize();
+
+    // If issuer has no specific target AID (0xFF = RFU), no validation needed
+    if (issuerTargetAidSize == (byte) 0xFF) {
+      return;
+    }
+
+    // Extract CA AID from caPublicKeyReference
+    byte caAidSize = caPublicKeyReference[CertificateConstants.KEY_REF_OFFSET_AID_SIZE];
+    byte[] caAidValue = new byte[CertificateConstants.AID_VALUE_SIZE];
+    System.arraycopy(
+        caPublicKeyReference,
+        CertificateConstants.KEY_REF_OFFSET_AID_VALUE,
+        caAidValue,
+        0,
+        CertificateConstants.AID_VALUE_SIZE);
+
+    // Get issuer's target AID
+    byte[] issuerTargetAidValue = issuerCaCertificate.getCaTargetAidValue();
+    byte issuerOperatingMode = issuerCaCertificate.getCaOperatingMode();
+
+    // Check truncation mode (bit b0 of operating mode)
+    boolean truncationAllowed = (issuerOperatingMode & 0x01) == 1;
+
+    if (truncationAllowed) {
+      // Truncation allowed: CA AID must be >= issuer target AID size
+      if ((caAidSize & 0xFF) < (issuerTargetAidSize & 0xFF)) {
+        throw new IllegalArgumentException(
+            "CA AID size ("
+                + (caAidSize & 0xFF)
+                + " bytes) must be at least "
+                + (issuerTargetAidSize & 0xFF)
+                + " bytes (issuer target AID size) when truncation is allowed");
+      }
+
+      // First issuerTargetAidSize bytes must match
+      for (int i = 0; i < (issuerTargetAidSize & 0xFF); i++) {
+        if (caAidValue[i] != issuerTargetAidValue[i]) {
+          throw new IllegalArgumentException(
+              "CA AID must start with issuer's target AID when truncation is allowed. "
+                  + "Mismatch at byte "
+                  + i
+                  + ": expected "
+                  + HexUtil.toHex(issuerTargetAidValue[i])
+                  + ", got "
+                  + HexUtil.toHex(caAidValue[i]));
+        }
+      }
+    } else {
+      // Truncation forbidden: CA AID must exactly match issuer target AID
+      if (caAidSize != issuerTargetAidSize) {
+        throw new IllegalArgumentException(
+            "CA AID size ("
+                + (caAidSize & 0xFF)
+                + " bytes) must exactly match issuer target AID size ("
+                + (issuerTargetAidSize & 0xFF)
+                + " bytes) when truncation is forbidden");
+      }
+
+      // All significant bytes must match
+      for (int i = 0; i < (issuerTargetAidSize & 0xFF); i++) {
+        if (caAidValue[i] != issuerTargetAidValue[i]) {
+          throw new IllegalArgumentException(
+              "CA AID must exactly match issuer's target AID when truncation is forbidden. "
+                  + "Mismatch at byte "
+                  + i
+                  + ": expected "
+                  + HexUtil.toHex(issuerTargetAidValue[i])
+                  + ", got "
+                  + HexUtil.toHex(caAidValue[i]));
+        }
+      }
+    }
   }
 }

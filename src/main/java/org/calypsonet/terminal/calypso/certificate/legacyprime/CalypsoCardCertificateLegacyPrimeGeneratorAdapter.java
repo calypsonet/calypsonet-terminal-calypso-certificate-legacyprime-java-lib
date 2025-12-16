@@ -11,9 +11,9 @@
  ************************************************************************************** */
 package org.calypsonet.terminal.calypso.certificate.legacyprime;
 
+import java.time.LocalDate;
 import org.calypsonet.terminal.calypso.certificate.legacyprime.spi.CalypsoCertificateLegacyPrimeSigner;
 import org.eclipse.keyple.core.util.Assert;
-import org.eclipse.keyple.core.util.HexUtil;
 
 /**
  * Adapter implementation of {@link CalypsoCardCertificateLegacyPrimeGenerator}.
@@ -29,6 +29,7 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
   private final CalypsoCertificateLegacyPrimeStoreAdapter store;
   private final byte[] issuerPublicKeyReference;
   private final CalypsoCertificateLegacyPrimeSigner signer;
+  private final CaCertificate issuerCaCertificate;
   private final CardCertificate.Builder certificateBuilder;
 
   private boolean cardPublicKeySet = false;
@@ -51,6 +52,7 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
     this.store = store;
     this.issuerPublicKeyReference = issuerPublicKeyReference.clone();
     this.signer = signer;
+    this.issuerCaCertificate = store.getCaCertificate(issuerPublicKeyReference);
     // Initialize the certificate builder with known values
     this.certificateBuilder =
         CardCertificate.builder()
@@ -220,11 +222,17 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
       throw new IllegalStateException("Card startup info must be set");
     }
 
-    // Verify that issuer public key exists in store
-    if (!store.containsPublicKeyReference(issuerPublicKeyReference)) {
-      throw new IllegalStateException(
-          "Issuer public key reference not found in store: "
-              + HexUtil.toHex(issuerPublicKeyReference));
+    if (issuerCaCertificate != null) {
+      // Check validity period
+      LocalDate today = LocalDate.now();
+      LocalDate startDate = CertificateUtils.decodeDateBcd(issuerCaCertificate.getStartDate());
+      if (startDate != null && today.isBefore(startDate)) {
+        throw new IllegalStateException("Issuer certificate is not yet valid.");
+      }
+      LocalDate endDate = CertificateUtils.decodeDateBcd(issuerCaCertificate.getEndDate());
+      if (endDate != null && today.isAfter(endDate)) {
+        throw new IllegalStateException("Issuer certificate has expired.");
+      }
     }
 
     // Extract issuer information from issuerPublicKeyReference (29 bytes)
