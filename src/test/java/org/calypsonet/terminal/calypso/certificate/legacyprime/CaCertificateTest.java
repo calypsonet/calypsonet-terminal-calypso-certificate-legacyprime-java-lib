@@ -39,12 +39,32 @@ class CaCertificateTest {
 
     // Initialize test data
     issuerKeyReference = new byte[29];
-    for (int i = 0; i < 29; i++) {
+    issuerKeyReference[0] = 0x0A; // AID size = 10 (valid range 5-16)
+    // AID value bytes 1-10 (unpadded)
+    for (int i = 1; i <= 10; i++) {
+      issuerKeyReference[i] = (byte) (0x01 + i);
+    }
+    // AID padding bytes 11-16 (must be zeros)
+    for (int i = 11; i <= 16; i++) {
+      issuerKeyReference[i] = 0x00;
+    }
+    // Serial number and key ID
+    for (int i = 17; i < 29; i++) {
       issuerKeyReference[i] = (byte) (0x01 + i);
     }
 
     caTargetKeyReference = new byte[29];
-    for (int i = 0; i < 29; i++) {
+    caTargetKeyReference[0] = 0x0C; // AID size = 12 (valid range 5-16)
+    // AID value bytes 1-12 (unpadded)
+    for (int i = 1; i <= 12; i++) {
+      caTargetKeyReference[i] = (byte) (0x30 + i);
+    }
+    // AID padding bytes 13-16 (must be zeros)
+    for (int i = 13; i <= 16; i++) {
+      caTargetKeyReference[i] = 0x00;
+    }
+    // Serial number and key ID
+    for (int i = 17; i < 29; i++) {
       caTargetKeyReference[i] = (byte) (0x30 + i);
     }
 

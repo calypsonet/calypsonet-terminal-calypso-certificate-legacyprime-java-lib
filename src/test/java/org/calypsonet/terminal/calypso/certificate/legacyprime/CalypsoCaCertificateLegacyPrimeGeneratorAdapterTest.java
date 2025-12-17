@@ -66,8 +66,9 @@ class CalypsoCaCertificateLegacyPrimeGeneratorAdapterTest {
 
     // Create valid CA public key reference (29 bytes)
     caPublicKeyReference = new byte[29];
-    for (int i = 0; i < 29; i++) {
-      caPublicKeyReference[i] = (byte) i;
+    caPublicKeyReference[0] = 0x0B; // AID size = 11 (valid range 5-16)
+    for (int i = 1; i < 29; i++) {
+      caPublicKeyReference[i] = (byte) (0x10 + i);
     }
   }
 
@@ -350,10 +351,17 @@ class CalypsoCaCertificateLegacyPrimeGeneratorAdapterTest {
    */
   private CaCertificate createMockIssuerCertificate(
       byte targetAidSize, byte[] targetAidValue, byte operatingMode) {
+    // Create a valid issuer key reference for the mock certificate
+    byte[] mockIssuerKeyRef = new byte[29];
+    mockIssuerKeyRef[0] = 0x08; // AID size = 8 (valid range 5-16)
+    for (int i = 1; i < 17; i++) {
+      mockIssuerKeyRef[i] = (byte) (0x20 + i);
+    }
+
     return CaCertificate.builder()
         .certType((byte) 0x90)
         .structureVersion((byte) 0x01)
-        .issuerKeyReference(new byte[29])
+        .issuerKeyReference(mockIssuerKeyRef)
         .caTargetKeyReference(issuerPublicKeyReference)
         .startDate(new byte[4])
         .caRfu1(new byte[4])

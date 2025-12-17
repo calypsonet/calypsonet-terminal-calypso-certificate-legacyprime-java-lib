@@ -19,8 +19,7 @@ import java.util.Arrays;
  * <p>A Key Reference is a 29-byte structure containing:
  *
  * <ul>
- *   <li>AID Size (1 byte): Size of the AID value (5-16)
- *   <li>AID Value (16 bytes): Application identifier, padded with zeros
+ *   <li>AID (17 bytes): Application identifier with size and padded value
  *   <li>Serial Number (8 bytes): SAM or card serial number
  *   <li>Key ID (4 bytes): Key identifier (often RFU = 00000000h)
  * </ul>
@@ -28,25 +27,32 @@ import java.util.Arrays;
  * @since 0.1.0
  */
 final class KeyReference {
-  private final byte aidSize;
-  private final byte[] aidValue;
+  private final Aid aid;
   private final byte[] serialNumber;
   private final byte[] keyId;
 
   /**
    * Creates a new key reference instance.
    *
-   * @param aidSize The AID size (5-16).
-   * @param aidValue The AID value (16 bytes, padded with zeros).
+   * @param aid The AID.
    * @param serialNumber The serial number (8 bytes).
    * @param keyId The key ID (4 bytes).
    * @since 0.1.0
    */
-  private KeyReference(byte aidSize, byte[] aidValue, byte[] serialNumber, byte[] keyId) {
-    this.aidSize = aidSize;
-    this.aidValue = aidValue != null ? aidValue.clone() : null;
+  private KeyReference(Aid aid, byte[] serialNumber, byte[] keyId) {
+    this.aid = aid;
     this.serialNumber = serialNumber != null ? serialNumber.clone() : null;
     this.keyId = keyId != null ? keyId.clone() : null;
+  }
+
+  /**
+   * Gets the AID object.
+   *
+   * @return The AID.
+   * @since 0.1.0
+   */
+  Aid getAid() {
+    return aid;
   }
 
   /**
@@ -56,17 +62,17 @@ final class KeyReference {
    * @since 0.1.0
    */
   byte getAidSize() {
-    return aidSize;
+    return aid.getSize();
   }
 
   /**
-   * Gets the AID value.
+   * Gets the AID value (padded to 16 bytes).
    *
    * @return A copy of the AID value (16 bytes, padded).
    * @since 0.1.0
    */
   byte[] getAidValue() {
-    return aidValue.clone();
+    return aid.getPaddedValue();
   }
 
   /**
@@ -99,12 +105,10 @@ final class KeyReference {
     byte[] bytes = new byte[CertificateConstants.KEY_REFERENCE_SIZE];
     int offset = 0;
 
-    // AID Size (1 byte)
-    bytes[offset++] = aidSize;
-
-    // AID Value (16 bytes)
-    System.arraycopy(aidValue, 0, bytes, offset, CertificateConstants.AID_VALUE_SIZE);
-    offset += CertificateConstants.AID_VALUE_SIZE;
+    // AID (17 bytes: 1 byte size + 16 bytes value)
+    byte[] aidBytes = aid.toBytes();
+    System.arraycopy(aidBytes, 0, bytes, offset, 1 + CertificateConstants.AID_VALUE_SIZE);
+    offset += 1 + CertificateConstants.AID_VALUE_SIZE;
 
     // Serial Number (8 bytes)
     System.arraycopy(serialNumber, 0, bytes, offset, CertificateConstants.SERIAL_NUMBER_SIZE);
@@ -135,13 +139,11 @@ final class KeyReference {
 
     int offset = 0;
 
-    // AID Size (1 byte)
-    byte aidSize = keyReference[offset++];
-
-    // AID Value (16 bytes)
-    byte[] aidValue = new byte[CertificateConstants.AID_VALUE_SIZE];
-    System.arraycopy(keyReference, offset, aidValue, 0, CertificateConstants.AID_VALUE_SIZE);
-    offset += CertificateConstants.AID_VALUE_SIZE;
+    // AID (17 bytes: 1 byte size + 16 bytes value)
+    byte[] aidBytes = new byte[1 + CertificateConstants.AID_VALUE_SIZE];
+    System.arraycopy(keyReference, offset, aidBytes, 0, 1 + CertificateConstants.AID_VALUE_SIZE);
+    Aid aid = Aid.fromBytes(aidBytes);
+    offset += 1 + CertificateConstants.AID_VALUE_SIZE;
 
     // Serial Number (8 bytes)
     byte[] serialNumber = new byte[CertificateConstants.SERIAL_NUMBER_SIZE];
@@ -153,7 +155,7 @@ final class KeyReference {
     byte[] keyId = new byte[CertificateConstants.KEY_ID_SIZE];
     System.arraycopy(keyReference, offset, keyId, 0, CertificateConstants.KEY_ID_SIZE);
 
-    return new KeyReference(aidSize, aidValue, serialNumber, keyId);
+    return new KeyReference(aid, serialNumber, keyId);
   }
 
   /**
@@ -171,16 +173,14 @@ final class KeyReference {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     KeyReference that = (KeyReference) o;
-    return aidSize == that.aidSize
-        && Arrays.equals(aidValue, that.aidValue)
+    return aid.equals(that.aid)
         && Arrays.equals(serialNumber, that.serialNumber)
         && Arrays.equals(keyId, that.keyId);
   }
 
   @Override
   public int hashCode() {
-    int result = aidSize;
-    result = 31 * result + Arrays.hashCode(aidValue);
+    int result = aid.hashCode();
     result = 31 * result + Arrays.hashCode(serialNumber);
     result = 31 * result + Arrays.hashCode(keyId);
     return result;
@@ -192,34 +192,21 @@ final class KeyReference {
    * @since 0.1.0
    */
   static final class Builder {
-    private byte aidSize;
-    private byte[] aidValue;
+    private Aid aid;
     private byte[] serialNumber;
     private byte[] keyId;
 
     private Builder() {}
 
     /**
-     * Sets the AID size.
+     * Sets the AID.
      *
-     * @param aidSize The AID size (5-16).
+     * @param aid The AID.
      * @return This builder instance.
      * @since 0.1.0
      */
-    Builder aidSize(byte aidSize) {
-      this.aidSize = aidSize;
-      return this;
-    }
-
-    /**
-     * Sets the AID value.
-     *
-     * @param aidValue The AID value (16 bytes, padded).
-     * @return This builder instance.
-     * @since 0.1.0
-     */
-    Builder aidValue(byte[] aidValue) {
-      this.aidValue = aidValue;
+    Builder aid(Aid aid) {
+      this.aid = aid;
       return this;
     }
 
@@ -254,7 +241,7 @@ final class KeyReference {
      * @since 0.1.0
      */
     KeyReference build() {
-      return new KeyReference(aidSize, aidValue, serialNumber, keyId);
+      return new KeyReference(aid, serialNumber, keyId);
     }
   }
 }
