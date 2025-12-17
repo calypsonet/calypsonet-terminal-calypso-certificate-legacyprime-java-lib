@@ -11,6 +11,8 @@
  ************************************************************************************** */
 package org.calypsonet.terminal.calypso.certificate.legacyprime;
 
+import java.time.LocalDate;
+
 /**
  * Internal class representing a Card Certificate with all its fields.
  *
@@ -33,8 +35,8 @@ final class CardCertificate {
   private final byte[] cardIndex;
   private final byte[] signature;
   // Recoverable data from signature
-  private final byte[] startDate;
-  private final byte[] endDate;
+  private final LocalDate startDate;
+  private final LocalDate endDate;
   private final byte cardRights;
   private final byte[] cardInfo;
   private final byte[] cardRfu;
@@ -63,8 +65,9 @@ final class CardCertificate {
         builder.cardSerialNumber != null ? builder.cardSerialNumber.clone() : null;
     this.cardIndex = builder.cardIndex != null ? builder.cardIndex.clone() : null;
     this.signature = builder.signature != null ? builder.signature.clone() : null;
-    this.startDate = builder.startDate != null ? builder.startDate.clone() : null;
-    this.endDate = builder.endDate != null ? builder.endDate.clone() : null;
+    this.startDate =
+        builder.startDate != null ? CertificateUtils.decodeDateBcd(builder.startDate) : null;
+    this.endDate = builder.endDate != null ? CertificateUtils.decodeDateBcd(builder.endDate) : null;
     this.cardRights = builder.cardRights;
     this.cardInfo = builder.cardInfo != null ? builder.cardInfo.clone() : null;
     this.cardRfu = builder.cardRfu != null ? builder.cardRfu.clone() : null;
@@ -195,21 +198,21 @@ final class CardCertificate {
   /**
    * Gets the start date from recoverable data.
    *
-   * @return A copy of the start date (4 bytes, YYYYMMDD in BCD).
+   * @return The start date as a LocalDate, or null if not set.
    * @since 0.1.0
    */
-  byte[] getStartDate() {
-    return startDate.clone();
+  LocalDate getStartDate() {
+    return startDate;
   }
 
   /**
    * Gets the end date from recoverable data.
    *
-   * @return A copy of the end date (4 bytes, YYYYMMDD in BCD).
+   * @return The end date as a LocalDate, or null if not set.
    * @since 0.1.0
    */
-  byte[] getEndDate() {
-    return endDate.clone();
+  LocalDate getEndDate() {
+    return endDate;
   }
 
   /**
@@ -263,6 +266,16 @@ final class CardCertificate {
   }
 
   /**
+   * Gets the certificate type as an enum.
+   *
+   * @return The certificate type.
+   * @since 0.1.0
+   */
+  CertificateType getCertificateType() {
+    return CertificateType.fromByte(certType);
+  }
+
+  /**
    * Serializes the recoverable data for ISO9796-2 signature (222 bytes).
    *
    * <p>This represents the data that will be embedded in the signature and can be recovered during
@@ -277,13 +290,19 @@ final class CardCertificate {
 
     // KCertStartDate (4 bytes)
     if (startDate != null) {
-      System.arraycopy(startDate, 0, data, offset, CertificateConstants.DATE_SIZE);
+      byte[] encodedStartDate =
+          CertificateUtils.encodeDateBcd(
+              startDate.getYear(), startDate.getMonthValue(), startDate.getDayOfMonth());
+      System.arraycopy(encodedStartDate, 0, data, offset, CertificateConstants.DATE_SIZE);
     }
     offset += CertificateConstants.DATE_SIZE;
 
     // KCertEndDate (4 bytes)
     if (endDate != null) {
-      System.arraycopy(endDate, 0, data, offset, CertificateConstants.DATE_SIZE);
+      byte[] encodedEndDate =
+          CertificateUtils.encodeDateBcd(
+              endDate.getYear(), endDate.getMonthValue(), endDate.getDayOfMonth());
+      System.arraycopy(encodedEndDate, 0, data, offset, CertificateConstants.DATE_SIZE);
     }
     offset += CertificateConstants.DATE_SIZE;
 

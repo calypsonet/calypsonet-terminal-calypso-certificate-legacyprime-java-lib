@@ -14,6 +14,7 @@ package org.calypsonet.terminal.calypso.certificate.legacyprime;
 import static org.assertj.core.api.Assertions.*;
 
 import java.security.interfaces.RSAPublicKey;
+import java.time.LocalDate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -92,7 +93,7 @@ class CaCertificateTest {
             .caTargetKeyReference(caTargetKeyReference)
             .startDate(startDate)
             .caRfu1(caRfu1)
-            .caRights((byte) 0x0F)
+            .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
             .caTargetAidSize((byte) 0x10)
@@ -122,7 +123,7 @@ class CaCertificateTest {
             .caTargetKeyReference(caTargetKeyReference)
             .startDate(startDate)
             .caRfu1(caRfu1)
-            .caRights((byte) 0x0F)
+            .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
             .caTargetAidSize((byte) 0x10)
@@ -167,7 +168,7 @@ class CaCertificateTest {
     }
 
     // KCertCaRights (1 byte)
-    assertThat(bytes[offset++]).isEqualTo((byte) 0x0F);
+    assertThat(bytes[offset++]).isEqualTo((byte) 0x01);
 
     // KCertCaScope (1 byte)
     assertThat(bytes[offset++]).isEqualTo((byte) 0xFF);
@@ -212,7 +213,7 @@ class CaCertificateTest {
             .caTargetKeyReference(caTargetKeyReference)
             .startDate(null) // Null start date
             .caRfu1(caRfu1)
-            .caRights((byte) 0x0F)
+            .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
             .caTargetAidSize((byte) 0x10)
@@ -248,7 +249,7 @@ class CaCertificateTest {
             .caTargetKeyReference(caTargetKeyReference)
             .startDate(startDate)
             .caRfu1(caRfu1)
-            .caRights((byte) 0x0F)
+            .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
             .caTargetAidSize((byte) 0x10)
@@ -278,7 +279,7 @@ class CaCertificateTest {
             .caTargetKeyReference(caTargetKeyReference)
             .startDate(startDate)
             .caRfu1(caRfu1)
-            .caRights((byte) 0x0F)
+            .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
             .caTargetAidSize((byte) 0x10)
@@ -317,7 +318,7 @@ class CaCertificateTest {
             .caTargetKeyReference(caTargetKeyReference)
             .startDate(startDate)
             .caRfu1(caRfu1)
-            .caRights((byte) 0x0F)
+            .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
             .caTargetAidSize((byte) 0x10)
@@ -350,7 +351,7 @@ class CaCertificateTest {
             .caTargetKeyReference(caTargetKeyReference)
             .startDate(startDate)
             .caRfu1(caRfu1)
-            .caRights((byte) 0x0F)
+            .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
             .caTargetAidSize((byte) 0x10)
@@ -392,7 +393,7 @@ class CaCertificateTest {
             .caTargetKeyReference(caTargetKeyReference)
             .startDate(startDate)
             .caRfu1(caRfu1)
-            .caRights((byte) 0x0F)
+            .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
             .caTargetAidSize((byte) 0x10)
@@ -415,11 +416,11 @@ class CaCertificateTest {
     assertThat(parsedCertificate.getStructureVersion()).isEqualTo((byte) 0x01);
     assertThat(parsedCertificate.getIssuerKeyReference()).isEqualTo(issuerKeyReference);
     assertThat(parsedCertificate.getCaTargetKeyReference()).isEqualTo(caTargetKeyReference);
-    assertThat(parsedCertificate.getStartDate()).isEqualTo(startDate);
+    assertThat(parsedCertificate.getStartDate()).isEqualTo(LocalDate.of(2024, 1, 1));
     assertThat(parsedCertificate.getCaRfu1()).isEqualTo(caRfu1);
     assertThat(parsedCertificate.getCaRights()).isEqualTo((byte) 0x0F);
     assertThat(parsedCertificate.getCaScope()).isEqualTo((byte) 0xFF);
-    assertThat(parsedCertificate.getEndDate()).isEqualTo(endDate);
+    assertThat(parsedCertificate.getEndDate()).isEqualTo(LocalDate.of(2029, 12, 31));
     assertThat(parsedCertificate.getCaTargetAidSize()).isEqualTo((byte) 0x10);
     assertThat(parsedCertificate.getCaTargetAidValue()).isEqualTo(caTargetAidValue);
     assertThat(parsedCertificate.getCaOperatingMode()).isEqualTo((byte) 0x01);
@@ -459,7 +460,7 @@ class CaCertificateTest {
             .caTargetKeyReference(caTargetKeyReference)
             .startDate(startDate)
             .caRfu1(caRfu1)
-            .caRights((byte) 0x0F)
+            .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
             .caTargetAidSize((byte) 0x10)

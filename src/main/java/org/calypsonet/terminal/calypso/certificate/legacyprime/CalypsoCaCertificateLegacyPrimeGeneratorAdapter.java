@@ -205,9 +205,9 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
 
     // Check consistency with issuer scope
     if (issuerCaCertificate != null) {
-      byte issuerScope = issuerCaCertificate.getCaScope();
+      CaScope issuerScope = issuerCaCertificate.getCaScope();
       // A universal scope cannot be generated from a limited-scope issuer.
-      if (issuerScope != CertificateConstants.CA_SCOPE_UNIVERSAL
+      if (issuerScope != CaScope.NOT_RESTRICTED
           && caScope == CertificateConstants.CA_SCOPE_UNIVERSAL) {
         throw new IllegalArgumentException(
             "Cannot generate a certificate with universal scope from an issuer with restricted scope.");
@@ -233,13 +233,13 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
     if (issuerCaCertificate != null) {
       // Check validity period
       LocalDate today = LocalDate.now();
-      LocalDate startDate = CertificateUtils.decodeDateBcd(issuerCaCertificate.getStartDate());
+      LocalDate startDate = issuerCaCertificate.getStartDate();
       if (startDate != null && today.isBefore(startDate)) {
-        throw new CertificateConsistencyException("Issuer CA certificate is not yet valid.");
+        throw new IllegalStateException("Issuer CA certificate is not yet valid.");
       }
-      LocalDate endDate = CertificateUtils.decodeDateBcd(issuerCaCertificate.getEndDate());
+      LocalDate endDate = issuerCaCertificate.getEndDate();
       if (endDate != null && today.isAfter(endDate)) {
-        throw new CertificateConsistencyException("Issuer CA certificate has expired.");
+        throw new IllegalStateException("Issuer CA certificate has expired.");
       }
     }
 

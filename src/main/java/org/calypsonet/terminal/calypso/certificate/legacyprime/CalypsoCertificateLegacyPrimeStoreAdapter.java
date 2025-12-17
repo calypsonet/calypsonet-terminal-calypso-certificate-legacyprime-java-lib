@@ -119,10 +119,9 @@ final class CalypsoCertificateLegacyPrimeStoreAdapter
     CaCertificate certificate = CaCertificate.fromBytes(caCertificate, issuerPublicKey);
 
     // Verify certificate type and version
-    if (certificate.getCertType() != CertificateConstants.CERT_TYPE_CA) {
+    if (certificate.getCertType() != CertificateType.CA) {
       throw new IllegalArgumentException(
-          "Invalid certificate type: expected 0x90, got "
-              + HexUtil.toHex(certificate.getCertType()));
+          "Invalid certificate type: expected CA (0x90), got " + certificate.getCertType());
     }
     if (certificate.getStructureVersion() != CertificateConstants.STRUCTURE_VERSION) {
       throw new IllegalArgumentException(

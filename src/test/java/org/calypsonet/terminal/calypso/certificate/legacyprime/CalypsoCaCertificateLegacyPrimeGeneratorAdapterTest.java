@@ -357,7 +357,7 @@ class CalypsoCaCertificateLegacyPrimeGeneratorAdapterTest {
         .caKeyId(new byte[4])
         .startDate(new byte[4])
         .caRfu1(new byte[4])
-        .caRights((byte) 0x00)
+        .caRights((byte) 0x01)
         .caScope((byte) 0xFF)
         .endDate(new byte[4])
         .caTargetAidSize(targetAidSize)

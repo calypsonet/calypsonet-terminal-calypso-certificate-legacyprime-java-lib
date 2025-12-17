@@ -225,11 +225,11 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
     if (issuerCaCertificate != null) {
       // Check validity period
       LocalDate today = LocalDate.now();
-      LocalDate startDate = CertificateUtils.decodeDateBcd(issuerCaCertificate.getStartDate());
+      LocalDate startDate = issuerCaCertificate.getStartDate();
       if (startDate != null && today.isBefore(startDate)) {
         throw new IllegalStateException("Issuer certificate is not yet valid.");
       }
-      LocalDate endDate = CertificateUtils.decodeDateBcd(issuerCaCertificate.getEndDate());
+      LocalDate endDate = issuerCaCertificate.getEndDate();
       if (endDate != null && today.isAfter(endDate)) {
         throw new IllegalStateException("Issuer certificate has expired.");
       }

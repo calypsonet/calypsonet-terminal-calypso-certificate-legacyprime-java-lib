@@ -69,21 +69,13 @@ final class CalypsoCertificateLegacyPrimeApiFactoryAdapter
     // Verify that the issuer certificate is valid for signing CA certificates
     CaCertificate issuerCaCert = store.getCaCertificate(issuerPublicKeyReference);
     if (issuerCaCert != null) {
-      // Check CA rights - bits b1-b0 for CA certificate signing
-      byte caRights = issuerCaCert.getCaRights();
-      int caCertRight = caRights & CertificateConstants.MASK_TWO_BITS; // Extract bits b1-b0
+      // Check CA rights for CA certificate signing
+      CaRights caRights = issuerCaCert.getCaRights();
+      CertRight caCertRight = caRights.getCaCertRight();
 
-      // %00 = CA cert signing right not specified
-      // %01 = Shall not sign CA cert
-      // %10 = May sign CA cert
-      // %11 = RFU
-      if (caCertRight == CertificateConstants.CERT_RIGHT_SHALL_NOT_SIGN) {
+      if (caCertRight == CertRight.SHALL_NOT_SIGN) {
         throw new IllegalStateException(
             "Issuer CA certificate does not have the right to sign CA certificates.");
-      }
-      if (caCertRight == CertificateConstants.CERT_RIGHT_RFU) {
-        throw new IllegalStateException(
-            "Issuer CA certificate has an RFU value for CA cert right.");
       }
     }
     // If issuerCaCert is null, it means we're using a PCA public key, which is allowed
@@ -117,22 +109,13 @@ final class CalypsoCertificateLegacyPrimeApiFactoryAdapter
     // Verify that the issuer certificate is valid for signing card certificates
     CaCertificate issuerCert = store.getCaCertificate(issuerPublicKeyReference);
     if (issuerCert != null) {
-      // Check CA rights - bits b3-b2 for Card certificate signing
-      byte caRights = issuerCert.getCaRights();
-      int cardCertRight =
-          (caRights >> CertificateConstants.SHIFT_CARD_CERT_RIGHT)
-              & CertificateConstants.MASK_TWO_BITS; // Extract bits b3-b2
+      // Check CA rights for card certificate signing
+      CaRights caRights = issuerCert.getCaRights();
+      CertRight cardCertRight = caRights.getCardCertRight();
 
-      // %00 = Card cert signing right not specified
-      // %01 = Shall not sign Card cert
-      // %10 = May sign Card cert
-      // %11 = RFU
-      if (cardCertRight == CertificateConstants.CERT_RIGHT_SHALL_NOT_SIGN) {
+      if (cardCertRight == CertRight.SHALL_NOT_SIGN) {
         throw new IllegalStateException(
             "Issuer certificate does not have the right to sign card certificates");
-      }
-      if (cardCertRight == CertificateConstants.CERT_RIGHT_RFU) {
-        throw new IllegalStateException("Issuer certificate has an RFU value for card cert right.");
       }
     }
     // If issuerCert is null, it means we're using a PCA public key, which is allowed

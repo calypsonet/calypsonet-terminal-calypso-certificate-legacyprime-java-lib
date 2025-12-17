@@ -363,19 +363,16 @@ class CalypsoCardCertificateLegacyPrimeGeneratorAdapterTest {
 
   @Test
   void generate_whenIssuerKeyNotInStore_shouldThrowIllegalStateException() {
-    // Given
+    // Given - Create an issuer reference that doesn't exist in the store
     byte[] unknownIssuerRef = new byte[] {0x09, 0x09, 0x09};
-    CalypsoCardCertificateLegacyPrimeGeneratorAdapter badGenerator =
-        new CalypsoCardCertificateLegacyPrimeGeneratorAdapter(store, unknownIssuerRef, signer);
+    CalypsoCertificateLegacyPrimeApiFactoryAdapter factory =
+        new CalypsoCertificateLegacyPrimeApiFactoryAdapter();
 
-    badGenerator.withCardPublicKey(cardPublicKey);
-    badGenerator.withCardAid(cardAid);
-    badGenerator.withCardSerialNumber(cardSerialNumber);
-    badGenerator.withCardStartupInfo(cardStartupInfo);
-
-    // When & Then
+    // When & Then - Factory should throw when issuer key is not in store
     assertThatIllegalStateException()
-        .isThrownBy(() -> badGenerator.generate())
+        .isThrownBy(
+            () ->
+                factory.createCalypsoCardCertificateLegacyPrimeGenerator(unknownIssuerRef, signer))
         .withMessageContaining("not found in store");
   }
 

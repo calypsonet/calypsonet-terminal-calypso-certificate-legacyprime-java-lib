@@ -12,6 +12,7 @@
 package org.calypsonet.terminal.calypso.certificate.legacyprime;
 
 import java.security.interfaces.RSAPublicKey;
+import java.time.LocalDate;
 
 /**
  * Internal class representing a CA Certificate with all its fields.
@@ -22,7 +23,7 @@ import java.security.interfaces.RSAPublicKey;
  * @since 0.1.0
  */
 final class CaCertificate {
-  private final byte certType;
+  private final CertificateType certType;
   private final byte structureVersion;
   private final byte[] issuerKeyReference;
   private final byte[] caTargetKeyReference;
@@ -30,14 +31,14 @@ final class CaCertificate {
   private final byte[] caAidValue;
   private final byte[] caSerialNumber;
   private final byte[] caKeyId;
-  private final byte[] startDate;
+  private final LocalDate startDate;
   private final byte[] caRfu1;
-  private final byte caRights;
-  private final byte caScope;
-  private final byte[] endDate;
+  private final CaRights caRights;
+  private final CaScope caScope;
+  private final LocalDate endDate;
   private final byte caTargetAidSize;
   private final byte[] caTargetAidValue;
-  private final byte caOperatingMode;
+  private final OperatingMode caOperatingMode;
   private final byte[] caRfu2;
   private final byte[] publicKeyHeader;
   private final byte[] signature;
@@ -50,7 +51,7 @@ final class CaCertificate {
    * @since 0.1.0
    */
   private CaCertificate(Builder builder) {
-    this.certType = builder.certType;
+    this.certType = CertificateType.fromByte(builder.certType);
     this.structureVersion = builder.structureVersion;
     this.issuerKeyReference =
         builder.issuerKeyReference != null ? builder.issuerKeyReference.clone() : null;
@@ -60,15 +61,16 @@ final class CaCertificate {
     this.caAidValue = builder.caAidValue != null ? builder.caAidValue.clone() : null;
     this.caSerialNumber = builder.caSerialNumber != null ? builder.caSerialNumber.clone() : null;
     this.caKeyId = builder.caKeyId != null ? builder.caKeyId.clone() : null;
-    this.startDate = builder.startDate != null ? builder.startDate.clone() : null;
+    this.startDate =
+        builder.startDate != null ? CertificateUtils.decodeDateBcd(builder.startDate) : null;
     this.caRfu1 = builder.caRfu1 != null ? builder.caRfu1.clone() : null;
-    this.caRights = builder.caRights;
-    this.caScope = builder.caScope;
-    this.endDate = builder.endDate != null ? builder.endDate.clone() : null;
+    this.caRights = CaRights.fromByte(builder.caRights);
+    this.caScope = CaScope.fromByte(builder.caScope);
+    this.endDate = builder.endDate != null ? CertificateUtils.decodeDateBcd(builder.endDate) : null;
     this.caTargetAidSize = builder.caTargetAidSize;
     this.caTargetAidValue =
         builder.caTargetAidValue != null ? builder.caTargetAidValue.clone() : null;
-    this.caOperatingMode = builder.caOperatingMode;
+    this.caOperatingMode = OperatingMode.fromByte(builder.caOperatingMode);
     this.caRfu2 = builder.caRfu2 != null ? builder.caRfu2.clone() : null;
     this.publicKeyHeader = builder.publicKeyHeader != null ? builder.publicKeyHeader.clone() : null;
     this.signature = builder.signature != null ? builder.signature.clone() : null;
@@ -76,12 +78,12 @@ final class CaCertificate {
   }
 
   /**
-   * Gets the certificate type.
+   * Retrieves the certificate type associated with this CA certificate.
    *
-   * @return The certificate type (0x90).
+   * @return The certificate type as a {@code CertificateType} enum value.
    * @since 0.1.0
    */
-  byte getCertType() {
+  CertificateType getCertType() {
     return certType;
   }
 
@@ -158,11 +160,11 @@ final class CaCertificate {
   /**
    * Gets the start date.
    *
-   * @return A copy of the start date (4 bytes, YYYYMMDD in BCD).
+   * @return The start date as a LocalDate, or null if not set.
    * @since 0.1.0
    */
-  byte[] getStartDate() {
-    return startDate.clone();
+  LocalDate getStartDate() {
+    return startDate;
   }
 
   /**
@@ -176,33 +178,34 @@ final class CaCertificate {
   }
 
   /**
-   * Gets the CA rights.
+   * Retrieves the CA rights associated with this certificate.
    *
-   * @return The CA rights byte.
+   * @return The CA rights object representing permissions and capabilities related to card and CA
+   *     certificate signing.
    * @since 0.1.0
    */
-  byte getCaRights() {
+  CaRights getCaRights() {
     return caRights;
   }
 
   /**
-   * Gets the CA scope.
+   * Retrieves the CA scope associated with this certificate.
    *
-   * @return The CA scope (0x00, 0x01, or 0xFF).
+   * @return The CA scope as a {@code CaScope} enum value.
    * @since 0.1.0
    */
-  byte getCaScope() {
+  CaScope getCaScope() {
     return caScope;
   }
 
   /**
    * Gets the end date.
    *
-   * @return A copy of the end date (4 bytes, YYYYMMDD in BCD).
+   * @return The end date as a LocalDate, or null if not set.
    * @since 0.1.0
    */
-  byte[] getEndDate() {
-    return endDate.clone();
+  LocalDate getEndDate() {
+    return endDate;
   }
 
   /**
@@ -226,12 +229,12 @@ final class CaCertificate {
   }
 
   /**
-   * Gets the operating mode.
+   * Gets the CA operating mode.
    *
-   * @return The operating mode (0 = truncation forbidden, 1 = truncation allowed).
+   * @return The CA operating mode indicating whether truncation is allowed or forbidden.
    * @since 0.1.0
    */
-  byte getCaOperatingMode() {
+  OperatingMode getCaOperatingMode() {
     return caOperatingMode;
   }
 
@@ -291,7 +294,7 @@ final class CaCertificate {
     int offset = 0;
 
     // KCertType (1 byte)
-    data[offset++] = certType;
+    data[offset++] = certType.getValue();
 
     // KCertStructureVersion (1 byte)
     data[offset++] = structureVersion;
@@ -307,7 +310,10 @@ final class CaCertificate {
 
     // KCertStartDate (4 bytes)
     if (startDate != null) {
-      System.arraycopy(startDate, 0, data, offset, CertificateConstants.DATE_SIZE);
+      byte[] encodedStartDate =
+          CertificateUtils.encodeDateBcd(
+              startDate.getYear(), startDate.getMonthValue(), startDate.getDayOfMonth());
+      System.arraycopy(encodedStartDate, 0, data, offset, CertificateConstants.DATE_SIZE);
     }
     offset += CertificateConstants.DATE_SIZE;
 
@@ -316,14 +322,17 @@ final class CaCertificate {
     offset += CertificateConstants.CA_RFU1_SIZE;
 
     // KCertCaRights (1 byte)
-    data[offset++] = caRights;
+    data[offset++] = caRights.toByte();
 
     // KCertCaScope (1 byte)
-    data[offset++] = caScope;
+    data[offset++] = caScope.getValue();
 
     // KCertEndDate (4 bytes)
     if (endDate != null) {
-      System.arraycopy(endDate, 0, data, offset, CertificateConstants.DATE_SIZE);
+      byte[] encodedEndDate =
+          CertificateUtils.encodeDateBcd(
+              endDate.getYear(), endDate.getMonthValue(), endDate.getDayOfMonth());
+      System.arraycopy(encodedEndDate, 0, data, offset, CertificateConstants.DATE_SIZE);
     }
     offset += CertificateConstants.DATE_SIZE;
 
@@ -335,7 +344,7 @@ final class CaCertificate {
     offset += CertificateConstants.AID_VALUE_SIZE;
 
     // KCertCaOperatingMode (1 byte)
-    data[offset++] = caOperatingMode;
+    data[offset++] = caOperatingMode.getValue();
 
     // KCertCaRfu2 (2 bytes)
     System.arraycopy(caRfu2, 0, data, offset, CertificateConstants.CA_RFU2_SIZE);

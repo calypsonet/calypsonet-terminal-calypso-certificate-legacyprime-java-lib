@@ -299,12 +299,9 @@ final class CertificateUtils {
 
     // Get issuer's target AID
     byte[] issuerTargetAidValue = issuerCaCertificate.getCaTargetAidValue();
-    byte issuerOperatingMode = issuerCaCertificate.getCaOperatingMode();
+    OperatingMode operatingMode = issuerCaCertificate.getCaOperatingMode();
 
-    // Check truncation mode (bit b0 of operating mode)
-    boolean truncationAllowed = (issuerOperatingMode & 0x01) == 1;
-
-    if (truncationAllowed) {
+    if (operatingMode.isTruncationAllowed()) {
       // Truncation allowed: CA AID must be >= issuer target AID size
       if ((caAidSize & 0xFF) < (issuerTargetAidSize & 0xFF)) {
         throw new IllegalArgumentException(
