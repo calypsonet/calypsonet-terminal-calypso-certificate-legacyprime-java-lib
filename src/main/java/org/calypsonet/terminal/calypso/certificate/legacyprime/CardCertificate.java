@@ -24,11 +24,7 @@ import java.time.LocalDate;
 final class CardCertificate {
   private final byte certType;
   private final byte structureVersion;
-  private final byte[] issuerKeyReference;
-  private final byte issuerAidSize;
-  private final byte[] issuerAidValue;
-  private final byte[] issuerSerialNumber;
-  private final byte[] issuerKeyId;
+  private final KeyReference issuerKeyReference;
   private final byte cardAidSize;
   private final byte[] cardAidValue;
   private final byte[] cardSerialNumber;
@@ -53,12 +49,9 @@ final class CardCertificate {
     this.certType = builder.certType;
     this.structureVersion = builder.structureVersion;
     this.issuerKeyReference =
-        builder.issuerKeyReference != null ? builder.issuerKeyReference.clone() : null;
-    this.issuerAidSize = builder.issuerAidSize;
-    this.issuerAidValue = builder.issuerAidValue != null ? builder.issuerAidValue.clone() : null;
-    this.issuerSerialNumber =
-        builder.issuerSerialNumber != null ? builder.issuerSerialNumber.clone() : null;
-    this.issuerKeyId = builder.issuerKeyId != null ? builder.issuerKeyId.clone() : null;
+        builder.issuerKeyReference != null
+            ? KeyReference.fromBytes(builder.issuerKeyReference)
+            : null;
     this.cardAidSize = builder.cardAidSize;
     this.cardAidValue = builder.cardAidValue != null ? builder.cardAidValue.clone() : null;
     this.cardSerialNumber =
@@ -102,47 +95,57 @@ final class CardCertificate {
    * @since 0.1.0
    */
   byte[] getIssuerKeyReference() {
-    return issuerKeyReference.clone();
+    return issuerKeyReference.toBytes();
   }
 
   /**
-   * Gets the issuer AID size.
+   * Gets the issuer key reference as an object.
+   *
+   * @return The issuer key reference.
+   * @since 0.1.0
+   */
+  KeyReference getIssuerKeyReferenceObject() {
+    return issuerKeyReference;
+  }
+
+  /**
+   * Gets the issuer AID size from the issuer key reference.
    *
    * @return The issuer AID size (5-16).
    * @since 0.1.0
    */
   byte getIssuerAidSize() {
-    return issuerAidSize;
+    return issuerKeyReference.getAidSize();
   }
 
   /**
-   * Gets the issuer AID value.
+   * Gets the issuer AID value from the issuer key reference.
    *
    * @return A copy of the issuer AID value (16 bytes, padded).
    * @since 0.1.0
    */
   byte[] getIssuerAidValue() {
-    return issuerAidValue.clone();
+    return issuerKeyReference.getAidValue();
   }
 
   /**
-   * Gets the issuer serial number.
+   * Gets the issuer serial number from the issuer key reference.
    *
    * @return A copy of the issuer serial number (8 bytes).
    * @since 0.1.0
    */
   byte[] getIssuerSerialNumber() {
-    return issuerSerialNumber.clone();
+    return issuerKeyReference.getSerialNumber();
   }
 
   /**
-   * Gets the issuer key ID.
+   * Gets the issuer key ID from the issuer key reference.
    *
    * @return A copy of the issuer key ID (4 bytes).
    * @since 0.1.0
    */
   byte[] getIssuerKeyId() {
-    return issuerKeyId.clone();
+    return issuerKeyReference.getKeyId();
   }
 
   /**
@@ -351,7 +354,8 @@ final class CardCertificate {
     data[offset++] = structureVersion;
 
     // KCertIssuerKeyReference (29 bytes)
-    System.arraycopy(issuerKeyReference, 0, data, offset, CertificateConstants.KEY_REFERENCE_SIZE);
+    byte[] issuerKeyRefBytes = issuerKeyReference.toBytes();
+    System.arraycopy(issuerKeyRefBytes, 0, data, offset, CertificateConstants.KEY_REFERENCE_SIZE);
     offset += CertificateConstants.KEY_REFERENCE_SIZE;
 
     // KCertCardAidSize (1 byte)
@@ -417,10 +421,6 @@ final class CardCertificate {
     private byte certType;
     private byte structureVersion;
     private byte[] issuerKeyReference;
-    private byte issuerAidSize;
-    private byte[] issuerAidValue;
-    private byte[] issuerSerialNumber;
-    private byte[] issuerKeyId;
     private byte cardAidSize;
     private byte[] cardAidValue;
     private byte[] cardSerialNumber;
@@ -448,26 +448,6 @@ final class CardCertificate {
 
     Builder issuerKeyReference(byte[] issuerKeyReference) {
       this.issuerKeyReference = issuerKeyReference;
-      return this;
-    }
-
-    Builder issuerAidSize(byte issuerAidSize) {
-      this.issuerAidSize = issuerAidSize;
-      return this;
-    }
-
-    Builder issuerAidValue(byte[] issuerAidValue) {
-      this.issuerAidValue = issuerAidValue;
-      return this;
-    }
-
-    Builder issuerSerialNumber(byte[] issuerSerialNumber) {
-      this.issuerSerialNumber = issuerSerialNumber;
-      return this;
-    }
-
-    Builder issuerKeyId(byte[] issuerKeyId) {
-      this.issuerKeyId = issuerKeyId;
       return this;
     }
 

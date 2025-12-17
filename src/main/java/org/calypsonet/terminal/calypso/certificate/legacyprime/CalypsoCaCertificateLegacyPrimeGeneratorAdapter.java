@@ -243,37 +243,8 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
       }
     }
 
-    // Extract CA information from caPublicKeyReference (29 bytes)
-    // Structure: caAidSize (1) + caAidValue (16) + caSerialNumber (8) + caKeyId (4)
-    byte caAidSize = caPublicKeyReference[CertificateConstants.KEY_REF_OFFSET_AID_SIZE];
-    byte[] caAidValue = new byte[CertificateConstants.AID_VALUE_SIZE];
-    System.arraycopy(
-        caPublicKeyReference,
-        CertificateConstants.KEY_REF_OFFSET_AID_VALUE,
-        caAidValue,
-        0,
-        CertificateConstants.AID_VALUE_SIZE);
-    byte[] caSerialNumber = new byte[CertificateConstants.SERIAL_NUMBER_SIZE];
-    System.arraycopy(
-        caPublicKeyReference,
-        CertificateConstants.KEY_REF_OFFSET_SERIAL_NUMBER,
-        caSerialNumber,
-        0,
-        CertificateConstants.SERIAL_NUMBER_SIZE);
-    byte[] caKeyId = new byte[CertificateConstants.KEY_ID_SIZE];
-    System.arraycopy(
-        caPublicKeyReference,
-        CertificateConstants.KEY_REF_OFFSET_KEY_ID,
-        caKeyId,
-        0,
-        CertificateConstants.KEY_ID_SIZE);
-
-    // Build the certificate with extracted information
-    certificateBuilder
-        .caAidSize(caAidSize)
-        .caAidValue(caAidValue)
-        .caSerialNumber(caSerialNumber)
-        .caKeyId(caKeyId);
+    // caPublicKeyReference will be converted to KeyReference by the builder
+    certificateBuilder.caTargetKeyReference(caPublicKeyReference);
 
     // Extract public key header (first 34 bytes of RSA modulus)
     CaCertificate tempCert = certificateBuilder.build();

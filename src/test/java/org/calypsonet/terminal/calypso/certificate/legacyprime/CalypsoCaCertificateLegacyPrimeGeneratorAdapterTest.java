@@ -39,7 +39,11 @@ class CalypsoCaCertificateLegacyPrimeGeneratorAdapterTest {
 
     // Create store and add issuer key
     store = new CalypsoCertificateLegacyPrimeStoreAdapter();
-    issuerPublicKeyReference = new byte[] {0x01, 0x02, 0x03};
+    // Create a valid 29-byte key reference
+    issuerPublicKeyReference = new byte[29];
+    issuerPublicKeyReference[0] = 0x0B; // AID size
+    System.arraycopy(
+        new byte[] {0x01, 0x02, 0x03}, 0, issuerPublicKeyReference, 1, 3); // AID value (partial)
 
     // Create a valid 2048-bit RSA public key with exponent 65537
     java.security.KeyPairGenerator keyGenTemp = java.security.KeyPairGenerator.getInstance("RSA");
@@ -351,10 +355,6 @@ class CalypsoCaCertificateLegacyPrimeGeneratorAdapterTest {
         .structureVersion((byte) 0x01)
         .issuerKeyReference(new byte[29])
         .caTargetKeyReference(issuerPublicKeyReference)
-        .caAidSize((byte) 0x0B)
-        .caAidValue(new byte[16])
-        .caSerialNumber(new byte[8])
-        .caKeyId(new byte[4])
         .startDate(new byte[4])
         .caRfu1(new byte[4])
         .caRights((byte) 0x01)

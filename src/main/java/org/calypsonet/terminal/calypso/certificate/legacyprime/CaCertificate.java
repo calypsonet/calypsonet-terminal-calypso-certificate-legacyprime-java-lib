@@ -25,12 +25,8 @@ import java.time.LocalDate;
 final class CaCertificate {
   private final CertificateType certType;
   private final byte structureVersion;
-  private final byte[] issuerKeyReference;
-  private final byte[] caTargetKeyReference;
-  private final byte caAidSize;
-  private final byte[] caAidValue;
-  private final byte[] caSerialNumber;
-  private final byte[] caKeyId;
+  private final KeyReference issuerKeyReference;
+  private final KeyReference caTargetKeyReference;
   private final LocalDate startDate;
   private final byte[] caRfu1;
   private final CaRights caRights;
@@ -54,13 +50,13 @@ final class CaCertificate {
     this.certType = CertificateType.fromByte(builder.certType);
     this.structureVersion = builder.structureVersion;
     this.issuerKeyReference =
-        builder.issuerKeyReference != null ? builder.issuerKeyReference.clone() : null;
+        builder.issuerKeyReference != null
+            ? KeyReference.fromBytes(builder.issuerKeyReference)
+            : null;
     this.caTargetKeyReference =
-        builder.caTargetKeyReference != null ? builder.caTargetKeyReference.clone() : null;
-    this.caAidSize = builder.caAidSize;
-    this.caAidValue = builder.caAidValue != null ? builder.caAidValue.clone() : null;
-    this.caSerialNumber = builder.caSerialNumber != null ? builder.caSerialNumber.clone() : null;
-    this.caKeyId = builder.caKeyId != null ? builder.caKeyId.clone() : null;
+        builder.caTargetKeyReference != null
+            ? KeyReference.fromBytes(builder.caTargetKeyReference)
+            : null;
     this.startDate =
         builder.startDate != null ? CertificateUtils.decodeDateBcd(builder.startDate) : null;
     this.caRfu1 = builder.caRfu1 != null ? builder.caRfu1.clone() : null;
@@ -104,7 +100,7 @@ final class CaCertificate {
    * @since 0.1.0
    */
   byte[] getIssuerKeyReference() {
-    return issuerKeyReference.clone();
+    return issuerKeyReference.toBytes();
   }
 
   /**
@@ -114,47 +110,67 @@ final class CaCertificate {
    * @since 0.1.0
    */
   byte[] getCaTargetKeyReference() {
-    return caTargetKeyReference.clone();
+    return caTargetKeyReference.toBytes();
   }
 
   /**
-   * Gets the CA AID size.
+   * Gets the issuer key reference as an object.
+   *
+   * @return The issuer key reference.
+   * @since 0.1.0
+   */
+  KeyReference getIssuerKeyReferenceObject() {
+    return issuerKeyReference;
+  }
+
+  /**
+   * Gets the CA target key reference as an object.
+   *
+   * @return The CA target key reference.
+   * @since 0.1.0
+   */
+  KeyReference getCaTargetKeyReferenceObject() {
+    return caTargetKeyReference;
+  }
+
+  /**
+   * Gets the CA AID size from the target key reference.
    *
    * @return The CA AID size (5-16).
    * @since 0.1.0
    */
   byte getCaAidSize() {
-    return caAidSize;
+    return caTargetKeyReference.getAidSize();
   }
 
   /**
-   * Gets the CA AID value.
+   * Gets the CA AID value from the target key reference.
    *
    * @return A copy of the CA AID value (16 bytes, padded).
    * @since 0.1.0
    */
   byte[] getCaAidValue() {
-    return caAidValue.clone();
+    return caTargetKeyReference.getAidValue();
   }
 
   /**
-   * Gets the CA serial number.
+   * Gets the CA serial number from the target key reference.
    *
    * @return A copy of the CA serial number (8 bytes).
    * @since 0.1.0
    */
   byte[] getCaSerialNumber() {
-    return caSerialNumber.clone();
+    return caTargetKeyReference.getSerialNumber();
   }
 
   /**
-   * Gets the CA key ID.
+   * Gets the CA key ID from the target key reference.
    *
    * @return A copy of the CA key ID (4 bytes).
    * @since 0.1.0
    */
   byte[] getCaKeyId() {
-    return caKeyId.clone();
+    return caTargetKeyReference.getKeyId();
   }
 
   /**
@@ -300,12 +316,13 @@ final class CaCertificate {
     data[offset++] = structureVersion;
 
     // KCertIssuerKeyReference (29 bytes)
-    System.arraycopy(issuerKeyReference, 0, data, offset, CertificateConstants.KEY_REFERENCE_SIZE);
+    byte[] issuerKeyRefBytes = issuerKeyReference.toBytes();
+    System.arraycopy(issuerKeyRefBytes, 0, data, offset, CertificateConstants.KEY_REFERENCE_SIZE);
     offset += CertificateConstants.KEY_REFERENCE_SIZE;
 
     // KCertCaTargetKeyReference (29 bytes)
-    System.arraycopy(
-        caTargetKeyReference, 0, data, offset, CertificateConstants.KEY_REFERENCE_SIZE);
+    byte[] caTargetKeyRefBytes = caTargetKeyReference.toBytes();
+    System.arraycopy(caTargetKeyRefBytes, 0, data, offset, CertificateConstants.KEY_REFERENCE_SIZE);
     offset += CertificateConstants.KEY_REFERENCE_SIZE;
 
     // KCertStartDate (4 bytes)
@@ -421,30 +438,6 @@ final class CaCertificate {
         caCertificate, offset, caTargetKeyReference, 0, CertificateConstants.KEY_REFERENCE_SIZE);
     offset += CertificateConstants.KEY_REFERENCE_SIZE;
 
-    // Extract fields from caTargetKeyReference
-    byte caAidSize = caTargetKeyReference[CertificateConstants.KEY_REF_OFFSET_AID_SIZE];
-    byte[] caAidValue = new byte[CertificateConstants.AID_VALUE_SIZE];
-    System.arraycopy(
-        caTargetKeyReference,
-        CertificateConstants.KEY_REF_OFFSET_AID_VALUE,
-        caAidValue,
-        0,
-        CertificateConstants.AID_VALUE_SIZE);
-    byte[] caSerialNumber = new byte[CertificateConstants.SERIAL_NUMBER_SIZE];
-    System.arraycopy(
-        caTargetKeyReference,
-        CertificateConstants.KEY_REF_OFFSET_SERIAL_NUMBER,
-        caSerialNumber,
-        0,
-        CertificateConstants.SERIAL_NUMBER_SIZE);
-    byte[] caKeyId = new byte[CertificateConstants.KEY_ID_SIZE];
-    System.arraycopy(
-        caTargetKeyReference,
-        CertificateConstants.KEY_REF_OFFSET_KEY_ID,
-        caKeyId,
-        0,
-        CertificateConstants.KEY_ID_SIZE);
-
     // KCertStartDate (4 bytes)
     byte[] startDate = new byte[CertificateConstants.DATE_SIZE];
     System.arraycopy(caCertificate, offset, startDate, 0, CertificateConstants.DATE_SIZE);
@@ -503,10 +496,6 @@ final class CaCertificate {
         .structureVersion(structureVersion)
         .issuerKeyReference(issuerKeyReference)
         .caTargetKeyReference(caTargetKeyReference)
-        .caAidSize(caAidSize)
-        .caAidValue(caAidValue)
-        .caSerialNumber(caSerialNumber)
-        .caKeyId(caKeyId)
         .startDate(startDate)
         .caRfu1(caRfu1)
         .caRights(caRights)
@@ -542,10 +531,6 @@ final class CaCertificate {
     private byte structureVersion;
     private byte[] issuerKeyReference;
     private byte[] caTargetKeyReference;
-    private byte caAidSize;
-    private byte[] caAidValue;
-    private byte[] caSerialNumber;
-    private byte[] caKeyId;
     private byte[] startDate;
     private byte[] caRfu1;
     private byte caRights;
@@ -578,26 +563,6 @@ final class CaCertificate {
 
     Builder caTargetKeyReference(byte[] caTargetKeyReference) {
       this.caTargetKeyReference = caTargetKeyReference;
-      return this;
-    }
-
-    Builder caAidSize(byte caAidSize) {
-      this.caAidSize = caAidSize;
-      return this;
-    }
-
-    Builder caAidValue(byte[] caAidValue) {
-      this.caAidValue = caAidValue;
-      return this;
-    }
-
-    Builder caSerialNumber(byte[] caSerialNumber) {
-      this.caSerialNumber = caSerialNumber;
-      return this;
-    }
-
-    Builder caKeyId(byte[] caKeyId) {
-      this.caKeyId = caKeyId;
       return this;
     }
 

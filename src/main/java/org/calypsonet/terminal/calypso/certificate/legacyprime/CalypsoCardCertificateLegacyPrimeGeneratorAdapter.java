@@ -235,37 +235,9 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
       }
     }
 
-    // Extract issuer information from issuerPublicKeyReference (29 bytes)
-    // Structure: issuerAidSize (1) + issuerAidValue (16) + issuerSerialNumber (8) + issuerKeyId (4)
-    byte issuerAidSize = issuerPublicKeyReference[CertificateConstants.KEY_REF_OFFSET_AID_SIZE];
-    byte[] issuerAidValue = new byte[CertificateConstants.AID_VALUE_SIZE];
-    System.arraycopy(
-        issuerPublicKeyReference,
-        CertificateConstants.KEY_REF_OFFSET_AID_VALUE,
-        issuerAidValue,
-        0,
-        CertificateConstants.AID_VALUE_SIZE);
-    byte[] issuerSerialNumber = new byte[CertificateConstants.SERIAL_NUMBER_SIZE];
-    System.arraycopy(
-        issuerPublicKeyReference,
-        CertificateConstants.KEY_REF_OFFSET_SERIAL_NUMBER,
-        issuerSerialNumber,
-        0,
-        CertificateConstants.SERIAL_NUMBER_SIZE);
-    byte[] issuerKeyId = new byte[CertificateConstants.KEY_ID_SIZE];
-    System.arraycopy(
-        issuerPublicKeyReference,
-        CertificateConstants.KEY_REF_OFFSET_KEY_ID,
-        issuerKeyId,
-        0,
-        CertificateConstants.KEY_ID_SIZE);
-
-    // Build the certificate with extracted information
+    // issuerPublicKeyReference will be converted to KeyReference by the builder
     certificateBuilder
-        .issuerAidSize(issuerAidSize)
-        .issuerAidValue(issuerAidValue)
-        .issuerSerialNumber(issuerSerialNumber)
-        .issuerKeyId(issuerKeyId)
+        .issuerKeyReference(issuerPublicKeyReference)
         .cardRights((byte) 0)
         .cardRfu(new byte[CertificateConstants.CARD_RFU_SIZE])
         .eccRfu(new byte[CertificateConstants.ECC_RFU_SIZE]);
