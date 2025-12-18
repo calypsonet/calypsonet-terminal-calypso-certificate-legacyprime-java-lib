@@ -20,7 +20,7 @@ class CardCertificateTest {
 
   private CardCertificate.Builder builder;
   private byte[] issuerKeyReference;
-  private byte[] cardAidValue;
+  private Aid cardAid;
   private byte[] cardSerialNumber;
   private byte[] cardIndex;
   private byte[] startDate;
@@ -51,10 +51,11 @@ class CardCertificateTest {
       issuerKeyReference[i] = (byte) (0x01 + i);
     }
 
-    cardAidValue = new byte[16];
+    byte[] cardAidValue = new byte[16];
     for (int i = 0; i < 16; i++) {
       cardAidValue[i] = (byte) (0xA0 + i);
     }
+    cardAid = Aid.fromUnpaddedValue(cardAidValue);
 
     cardSerialNumber = new byte[8];
     for (int i = 0; i < 8; i++) {
@@ -102,8 +103,7 @@ class CardCertificateTest {
             .certType((byte) 0x91)
             .structureVersion((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
-            .cardAidSize((byte) 0x10)
-            .cardAidValue(cardAidValue)
+            .cardAid(cardAid)
             .cardSerialNumber(cardSerialNumber)
             .cardIndex(cardIndex)
             .signature(signature)
@@ -131,8 +131,7 @@ class CardCertificateTest {
             .certType((byte) 0x91)
             .structureVersion((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
-            .cardAidSize((byte) 0x10)
-            .cardAidValue(cardAidValue)
+            .cardAid(cardAid)
             .cardSerialNumber(cardSerialNumber)
             .cardIndex(cardIndex)
             .signature(signature)
@@ -195,8 +194,7 @@ class CardCertificateTest {
             .certType((byte) 0x91)
             .structureVersion((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
-            .cardAidSize((byte) 0x10)
-            .cardAidValue(cardAidValue)
+            .cardAid(cardAid)
             .cardSerialNumber(cardSerialNumber)
             .cardIndex(cardIndex)
             .signature(signature)
@@ -230,8 +228,7 @@ class CardCertificateTest {
             .certType((byte) 0x91)
             .structureVersion((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
-            .cardAidSize((byte) 0x10)
-            .cardAidValue(cardAidValue)
+            .cardAid(cardAid)
             .cardSerialNumber(cardSerialNumber)
             .cardIndex(cardIndex)
             .signature(signature)
@@ -259,8 +256,7 @@ class CardCertificateTest {
             .certType((byte) 0x91)
             .structureVersion((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
-            .cardAidSize((byte) 0x10)
-            .cardAidValue(cardAidValue)
+            .cardAid(cardAid)
             .cardSerialNumber(cardSerialNumber)
             .cardIndex(cardIndex)
             .signature(signature)
@@ -291,11 +287,11 @@ class CardCertificateTest {
     }
 
     // KCertCardAidSize (1 byte)
-    assertThat(bytes[offset++]).isEqualTo((byte) 0x10);
+    assertThat(bytes[offset++]).isEqualTo(cardAid.getSize());
 
     // KCertCardAidValue (16 bytes)
     for (int i = 0; i < 16; i++) {
-      assertThat(bytes[offset++]).isEqualTo(cardAidValue[i]);
+      assertThat(bytes[offset++]).isEqualTo(cardAid.getPaddedValue()[i]);
     }
 
     // KCertCardSerialNumber (8 bytes)
@@ -319,8 +315,7 @@ class CardCertificateTest {
             .certType((byte) 0x91)
             .structureVersion((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
-            .cardAidSize((byte) 0x10)
-            .cardAidValue(cardAidValue)
+            .cardAid(cardAid)
             .cardSerialNumber(null) // Null serial number
             .cardIndex(cardIndex)
             .signature(signature)
@@ -353,8 +348,7 @@ class CardCertificateTest {
             .certType((byte) 0x91)
             .structureVersion((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
-            .cardAidSize((byte) 0x10)
-            .cardAidValue(cardAidValue)
+            .cardAid(cardAid)
             .cardSerialNumber(cardSerialNumber)
             .cardIndex(cardIndex)
             .signature(signature)
@@ -382,8 +376,7 @@ class CardCertificateTest {
             .certType((byte) 0x91)
             .structureVersion((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
-            .cardAidSize((byte) 0x10)
-            .cardAidValue(cardAidValue)
+            .cardAid(cardAid)
             .cardSerialNumber(cardSerialNumber)
             .cardIndex(cardIndex)
             .signature(signature)
@@ -420,8 +413,7 @@ class CardCertificateTest {
             .certType((byte) 0x91)
             .structureVersion((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
-            .cardAidSize((byte) 0x10)
-            .cardAidValue(cardAidValue)
+            .cardAid(cardAid)
             .cardSerialNumber(cardSerialNumber)
             .cardIndex(cardIndex)
             .signature(signature)
@@ -450,8 +442,7 @@ class CardCertificateTest {
             .certType((byte) 0x91)
             .structureVersion((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
-            .cardAidSize((byte) 0x10)
-            .cardAidValue(cardAidValue)
+            .cardAid(cardAid)
             .cardSerialNumber(cardSerialNumber)
             .cardIndex(cardIndex)
             .signature(signature)

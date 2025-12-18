@@ -25,6 +25,8 @@ package org.calypsonet.terminal.calypso.certificate.legacyprime;
  * @since 0.1.0
  */
 final class CaRights {
+  static final byte CA_RIGHTS_NOT_SPECIFIED = (byte) 0x00;
+
   private final CertRight cardCertRight;
   private final CertRight caCertRight;
 

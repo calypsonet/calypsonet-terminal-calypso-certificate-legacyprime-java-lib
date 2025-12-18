@@ -28,7 +28,6 @@ import org.bouncycastle.crypto.params.RSAKeyParameters;
 import org.bouncycastle.crypto.signers.ISO9796d2PSSSigner;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.eclipse.keyple.core.util.Assert;
-import org.eclipse.keyple.core.util.HexUtil;
 
 /**
  * Utility class containing common methods for certificate generation and manipulation.
@@ -265,7 +264,7 @@ final class CertificateUtils {
    * <p>According to the Calypso specification (KCertCaOperatingMode):
    *
    * <ul>
-   *   <li>If issuer has no target AID specified (0xFF), no validation is performed
+   *   <li>If issuer has no target AID specified (is null), no validation is performed
    *   <li>If truncation is forbidden (bit b0 = 0): CA AID must exactly match issuer's target AID
    *   <li>If truncation is allowed (bit b0 = 1): CA AID must start with issuer's target AID
    * </ul>
@@ -280,75 +279,29 @@ final class CertificateUtils {
       return;
     }
 
-    byte issuerTargetAidSize = issuerCaCertificate.getCaTargetAidSize();
+    Aid issuerTargetAid = issuerCaCertificate.getCaTargetAid();
 
-    // If issuer has no specific target AID (0xFF = RFU), no validation needed
-    if (issuerTargetAidSize == (byte) 0xFF) {
+    // If issuer has no specific target AID (is null or RFU), no validation needed
+    if (issuerTargetAid == null || issuerTargetAid.isRfu()) {
       return;
     }
 
     // Extract CA AID from caPublicKeyReference
-    byte caAidSize = caPublicKeyReference[CertificateConstants.KEY_REF_OFFSET_AID_SIZE];
-    byte[] caAidValue = new byte[CertificateConstants.AID_VALUE_SIZE];
-    System.arraycopy(
-        caPublicKeyReference,
-        CertificateConstants.KEY_REF_OFFSET_AID_VALUE,
-        caAidValue,
-        0,
-        CertificateConstants.AID_VALUE_SIZE);
+    KeyReference keyReference = KeyReference.fromBytes(caPublicKeyReference);
+    Aid caAid = keyReference.getAid();
 
-    // Get issuer's target AID
-    byte[] issuerTargetAidValue = issuerCaCertificate.getCaTargetAidValue();
-    OperatingMode operatingMode = issuerCaCertificate.getCaOperatingMode();
+    // Get issuer's operating mode
+    OperatingMode issuerOperatingMode = issuerCaCertificate.getCaOperatingMode();
 
-    if (operatingMode.isTruncationAllowed()) {
-      // Truncation allowed: CA AID must be >= issuer target AID size
-      if ((caAidSize & 0xFF) < (issuerTargetAidSize & 0xFF)) {
-        throw new IllegalArgumentException(
-            "CA AID size ("
-                + (caAidSize & 0xFF)
-                + " bytes) must be at least "
-                + (issuerTargetAidSize & 0xFF)
-                + " bytes (issuer target AID size) when truncation is allowed");
-      }
-
-      // First issuerTargetAidSize bytes must match
-      for (int i = 0; i < (issuerTargetAidSize & 0xFF); i++) {
-        if (caAidValue[i] != issuerTargetAidValue[i]) {
-          throw new IllegalArgumentException(
-              "CA AID must start with issuer's target AID when truncation is allowed. "
-                  + "Mismatch at byte "
-                  + i
-                  + ": expected "
-                  + HexUtil.toHex(issuerTargetAidValue[i])
-                  + ", got "
-                  + HexUtil.toHex(caAidValue[i]));
-        }
-      }
-    } else {
-      // Truncation forbidden: CA AID must exactly match issuer target AID
-      if (caAidSize != issuerTargetAidSize) {
-        throw new IllegalArgumentException(
-            "CA AID size ("
-                + (caAidSize & 0xFF)
-                + " bytes) must exactly match issuer target AID size ("
-                + (issuerTargetAidSize & 0xFF)
-                + " bytes) when truncation is forbidden");
-      }
-
-      // All significant bytes must match
-      for (int i = 0; i < (issuerTargetAidSize & 0xFF); i++) {
-        if (caAidValue[i] != issuerTargetAidValue[i]) {
-          throw new IllegalArgumentException(
-              "CA AID must exactly match issuer's target AID when truncation is forbidden. "
-                  + "Mismatch at byte "
-                  + i
-                  + ": expected "
-                  + HexUtil.toHex(issuerTargetAidValue[i])
-                  + ", got "
-                  + HexUtil.toHex(caAidValue[i]));
-        }
-      }
+    if (!caAid.matches(issuerTargetAid, issuerOperatingMode)) {
+      throw new IllegalArgumentException(
+          "CA AID '"
+              + caAid
+              + "' does not match issuer's target AID constraints (issuer AID: '"
+              + issuerTargetAid
+              + "', mode: "
+              + issuerOperatingMode
+              + ").");
     }
   }
 }

@@ -118,30 +118,7 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
    */
   @Override
   public CalypsoCardCertificateLegacyPrimeGenerator withCardAid(byte[] aid) {
-    Assert.getInstance()
-        .notNull(aid, "aid")
-        .isInRange(
-            aid.length,
-            CertificateConstants.AID_MIN_LENGTH,
-            CertificateConstants.AID_MAX_LENGTH,
-            "aid length");
-
-    // Check if AID contains only zero bytes
-    boolean allZeros = true;
-    for (byte b : aid) {
-      if (b != 0) {
-        allZeros = false;
-        break;
-      }
-    }
-    Assert.getInstance().isTrue(!allZeros, "AID cannot contain only zero bytes");
-
-    // Prepare padded AID value
-    byte cardAidSize = (byte) aid.length;
-    byte[] cardAidValue = new byte[CertificateConstants.AID_VALUE_SIZE];
-    System.arraycopy(aid, 0, cardAidValue, 0, aid.length);
-
-    certificateBuilder.cardAidSize(cardAidSize).cardAidValue(cardAidValue);
+    certificateBuilder.cardAid(Aid.fromUnpaddedValue(aid));
     cardAidSet = true;
     return this;
   }

@@ -26,7 +26,7 @@ class CaCertificateTest {
   private byte[] startDate;
   private byte[] endDate;
   private byte[] caRfu1;
-  private byte[] caTargetAidValue;
+  private Aid caTargetAid;
   private byte[] caRfu2;
   private byte[] publicKeyHeader;
   private byte[] signature;
@@ -74,10 +74,11 @@ class CaCertificateTest {
     caRfu1 = new byte[] {0x00, 0x00, 0x00, 0x00};
     caRfu2 = new byte[] {0x00, 0x00};
 
-    caTargetAidValue = new byte[16];
+    byte[] aidValue = new byte[16];
     for (int i = 0; i < 16; i++) {
-      caTargetAidValue[i] = (byte) (0xA0 + i);
+      aidValue[i] = (byte) (0xA0 + i);
     }
+    caTargetAid = Aid.fromUnpaddedValue(aidValue);
 
     publicKeyHeader = new byte[34];
     for (int i = 0; i < 34; i++) {
@@ -116,8 +117,8 @@ class CaCertificateTest {
             .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
-            .caTargetAidSize((byte) 0x10)
-            .caTargetAidValue(caTargetAidValue)
+            .caTargetAidSize(caTargetAid.getSize())
+            .caTargetAidValue(caTargetAid.getPaddedValue())
             .caOperatingMode((byte) 0x01)
             .caRfu2(caRfu2)
             .publicKeyHeader(publicKeyHeader)
@@ -146,8 +147,8 @@ class CaCertificateTest {
             .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
-            .caTargetAidSize((byte) 0x10)
-            .caTargetAidValue(caTargetAidValue)
+            .caTargetAidSize(caTargetAid.getSize())
+            .caTargetAidValue(caTargetAid.getPaddedValue())
             .caOperatingMode((byte) 0x01)
             .caRfu2(caRfu2)
             .publicKeyHeader(publicKeyHeader)
@@ -199,11 +200,11 @@ class CaCertificateTest {
     }
 
     // KCertCaTargetAidSize (1 byte)
-    assertThat(bytes[offset++]).isEqualTo((byte) 0x10);
+    assertThat(bytes[offset++]).isEqualTo(caTargetAid.getSize());
 
     // KCertCaTargetAidValue (16 bytes)
     for (int i = 0; i < 16; i++) {
-      assertThat(bytes[offset++]).isEqualTo(caTargetAidValue[i]);
+      assertThat(bytes[offset++]).isEqualTo(caTargetAid.getPaddedValue()[i]);
     }
 
     // KCertCaOperatingMode (1 byte)
@@ -236,8 +237,8 @@ class CaCertificateTest {
             .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
-            .caTargetAidSize((byte) 0x10)
-            .caTargetAidValue(caTargetAidValue)
+            .caTargetAidSize(caTargetAid.getSize())
+            .caTargetAidValue(caTargetAid.getPaddedValue())
             .caOperatingMode((byte) 0x01)
             .caRfu2(caRfu2)
             .publicKeyHeader(publicKeyHeader)
@@ -272,8 +273,8 @@ class CaCertificateTest {
             .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
-            .caTargetAidSize((byte) 0x10)
-            .caTargetAidValue(caTargetAidValue)
+            .caTargetAidSize(caTargetAid.getSize())
+            .caTargetAidValue(caTargetAid.getPaddedValue())
             .caOperatingMode((byte) 0x01)
             .caRfu2(caRfu2)
             .publicKeyHeader(publicKeyHeader)
@@ -302,8 +303,8 @@ class CaCertificateTest {
             .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
-            .caTargetAidSize((byte) 0x10)
-            .caTargetAidValue(caTargetAidValue)
+            .caTargetAidSize(caTargetAid.getSize())
+            .caTargetAidValue(caTargetAid.getPaddedValue())
             .caOperatingMode((byte) 0x01)
             .caRfu2(caRfu2)
             .publicKeyHeader(publicKeyHeader)
@@ -341,8 +342,8 @@ class CaCertificateTest {
             .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
-            .caTargetAidSize((byte) 0x10)
-            .caTargetAidValue(caTargetAidValue)
+            .caTargetAidSize(caTargetAid.getSize())
+            .caTargetAidValue(caTargetAid.getPaddedValue())
             .caOperatingMode((byte) 0x01)
             .caRfu2(caRfu2)
             .publicKeyHeader(publicKeyHeader)
@@ -374,8 +375,8 @@ class CaCertificateTest {
             .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
-            .caTargetAidSize((byte) 0x10)
-            .caTargetAidValue(caTargetAidValue)
+            .caTargetAidSize(caTargetAid.getSize())
+            .caTargetAidValue(caTargetAid.getPaddedValue())
             .caOperatingMode((byte) 0x01)
             .caRfu2(caRfu2)
             .publicKeyHeader(publicKeyHeader)
@@ -416,8 +417,8 @@ class CaCertificateTest {
             .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
-            .caTargetAidSize((byte) 0x10)
-            .caTargetAidValue(caTargetAidValue)
+            .caTargetAidSize(caTargetAid.getSize())
+            .caTargetAidValue(caTargetAid.getPaddedValue())
             .caOperatingMode((byte) 0x01)
             .caRfu2(caRfu2)
             .publicKeyHeader(publicKeyHeader)
@@ -432,18 +433,17 @@ class CaCertificateTest {
 
     // Then
     assertThat(parsedCertificate).isNotNull();
-    assertThat(parsedCertificate.getCertType()).isEqualTo((byte) 0x90);
+    assertThat(parsedCertificate.getCertType()).isEqualTo(CertificateType.CA);
     assertThat(parsedCertificate.getStructureVersion()).isEqualTo((byte) 0x01);
     assertThat(parsedCertificate.getIssuerKeyReference()).isEqualTo(issuerKeyReference);
     assertThat(parsedCertificate.getCaTargetKeyReference()).isEqualTo(caTargetKeyReference);
     assertThat(parsedCertificate.getStartDate()).isEqualTo(LocalDate.of(2024, 1, 1));
     assertThat(parsedCertificate.getCaRfu1()).isEqualTo(caRfu1);
-    assertThat(parsedCertificate.getCaRights()).isEqualTo((byte) 0x0F);
-    assertThat(parsedCertificate.getCaScope()).isEqualTo((byte) 0xFF);
+    assertThat(parsedCertificate.getCaRights().toByte()).isEqualTo((byte) 0x01);
+    assertThat(parsedCertificate.getCaScope()).isEqualTo(CaScope.NOT_RESTRICTED);
     assertThat(parsedCertificate.getEndDate()).isEqualTo(LocalDate.of(2029, 12, 31));
-    assertThat(parsedCertificate.getCaTargetAidSize()).isEqualTo((byte) 0x10);
-    assertThat(parsedCertificate.getCaTargetAidValue()).isEqualTo(caTargetAidValue);
-    assertThat(parsedCertificate.getCaOperatingMode()).isEqualTo((byte) 0x01);
+    assertThat(parsedCertificate.getCaTargetAid()).isEqualTo(caTargetAid);
+    assertThat(parsedCertificate.getCaOperatingMode()).isEqualTo(OperatingMode.TRUNCATION_ALLOWED);
     assertThat(parsedCertificate.getCaRfu2()).isEqualTo(caRfu2);
     assertThat(parsedCertificate.getPublicKeyHeader()).isEqualTo(publicKeyHeader);
     assertThat(parsedCertificate.getSignature()).isEqualTo(signature);
@@ -483,8 +483,8 @@ class CaCertificateTest {
             .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
-            .caTargetAidSize((byte) 0x10)
-            .caTargetAidValue(caTargetAidValue)
+            .caTargetAidSize(caTargetAid.getSize())
+            .caTargetAidValue(caTargetAid.getPaddedValue())
             .caOperatingMode((byte) 0x01)
             .caRfu2(caRfu2)
             .publicKeyHeader(publicKeyHeader)

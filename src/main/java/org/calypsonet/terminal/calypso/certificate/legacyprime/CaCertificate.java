@@ -32,8 +32,7 @@ final class CaCertificate {
   private final CaRights caRights;
   private final CaScope caScope;
   private final LocalDate endDate;
-  private final byte caTargetAidSize;
-  private final byte[] caTargetAidValue;
+  private final Aid caTargetAid;
   private final OperatingMode caOperatingMode;
   private final byte[] caRfu2;
   private final byte[] publicKeyHeader;
@@ -63,9 +62,7 @@ final class CaCertificate {
     this.caRights = CaRights.fromByte(builder.caRights);
     this.caScope = CaScope.fromByte(builder.caScope);
     this.endDate = builder.endDate != null ? CertificateUtils.decodeDateBcd(builder.endDate) : null;
-    this.caTargetAidSize = builder.caTargetAidSize;
-    this.caTargetAidValue =
-        builder.caTargetAidValue != null ? builder.caTargetAidValue.clone() : null;
+    this.caTargetAid = Aid.fromBytes(builder.caTargetAidSize, builder.caTargetAidValue);
     this.caOperatingMode = OperatingMode.fromByte(builder.caOperatingMode);
     this.caRfu2 = builder.caRfu2 != null ? builder.caRfu2.clone() : null;
     this.publicKeyHeader = builder.publicKeyHeader != null ? builder.publicKeyHeader.clone() : null;
@@ -225,23 +222,13 @@ final class CaCertificate {
   }
 
   /**
-   * Gets the target AID size.
+   * Gets the target AID object.
    *
-   * @return The target AID size (5-16).
+   * @return The target AID, or null if not set (RFU).
    * @since 0.1.0
    */
-  byte getCaTargetAidSize() {
-    return caTargetAidSize;
-  }
-
-  /**
-   * Gets the target AID value.
-   *
-   * @return A copy of the target AID value (16 bytes, padded).
-   * @since 0.1.0
-   */
-  byte[] getCaTargetAidValue() {
-    return caTargetAidValue.clone();
+  Aid getCaTargetAid() {
+    return caTargetAid;
   }
 
   /**
@@ -353,12 +340,10 @@ final class CaCertificate {
     }
     offset += CertificateConstants.DATE_SIZE;
 
-    // KCertCaTargetAidSize (1 byte)
-    data[offset++] = caTargetAidSize;
-
-    // KCertCaTargetAidValue (16 bytes)
-    System.arraycopy(caTargetAidValue, 0, data, offset, CertificateConstants.AID_VALUE_SIZE);
-    offset += CertificateConstants.AID_VALUE_SIZE;
+    // AID (17 bytes: 1 byte size + 16 bytes value)
+    byte[] aidBytes = caTargetAid.toBytes();
+    System.arraycopy(aidBytes, 0, data, offset, 1 + CertificateConstants.AID_VALUE_SIZE);
+    offset += 1 + CertificateConstants.AID_VALUE_SIZE;
 
     // KCertCaOperatingMode (1 byte)
     data[offset++] = caOperatingMode.getValue();
@@ -591,7 +576,7 @@ final class CaCertificate {
       return this;
     }
 
-    Builder caTargetAidSize(byte caTargetAidSize) {
+    public Builder caTargetAidSize(byte caTargetAidSize) {
       this.caTargetAidSize = caTargetAidSize;
       return this;
     }

@@ -25,8 +25,7 @@ final class CardCertificate {
   private final byte certType;
   private final byte structureVersion;
   private final KeyReference issuerKeyReference;
-  private final byte cardAidSize;
-  private final byte[] cardAidValue;
+  private final Aid cardAid;
   private final byte[] cardSerialNumber;
   private final byte[] cardIndex;
   private final byte[] signature;
@@ -52,8 +51,7 @@ final class CardCertificate {
         builder.issuerKeyReference != null
             ? KeyReference.fromBytes(builder.issuerKeyReference)
             : null;
-    this.cardAidSize = builder.cardAidSize;
-    this.cardAidValue = builder.cardAidValue != null ? builder.cardAidValue.clone() : null;
+    this.cardAid = builder.cardAid;
     this.cardSerialNumber =
         builder.cardSerialNumber != null ? builder.cardSerialNumber.clone() : null;
     this.cardIndex = builder.cardIndex != null ? builder.cardIndex.clone() : null;
@@ -149,23 +147,13 @@ final class CardCertificate {
   }
 
   /**
-   * Gets the card AID size.
+   * Gets the card AID object.
    *
-   * @return The card AID size (5-16).
+   * @return The card AID.
    * @since 0.1.0
    */
-  byte getCardAidSize() {
-    return cardAidSize;
-  }
-
-  /**
-   * Gets the card AID value.
-   *
-   * @return A copy of the card AID value (16 bytes, padded).
-   * @since 0.1.0
-   */
-  byte[] getCardAidValue() {
-    return cardAidValue.clone();
+  Aid getCardAid() {
+    return cardAid;
   }
 
   /**
@@ -359,10 +347,11 @@ final class CardCertificate {
     offset += CertificateConstants.KEY_REFERENCE_SIZE;
 
     // KCertCardAidSize (1 byte)
-    data[offset++] = cardAidSize;
+    data[offset++] = cardAid.getSize();
 
     // KCertCardAidValue (16 bytes)
-    System.arraycopy(cardAidValue, 0, data, offset, CertificateConstants.AID_VALUE_SIZE);
+    System.arraycopy(
+        cardAid.getPaddedValue(), 0, data, offset, CertificateConstants.AID_VALUE_SIZE);
     offset += CertificateConstants.AID_VALUE_SIZE;
 
     // KCertCardSerialNumber (8 bytes)
@@ -421,8 +410,7 @@ final class CardCertificate {
     private byte certType;
     private byte structureVersion;
     private byte[] issuerKeyReference;
-    private byte cardAidSize;
-    private byte[] cardAidValue;
+    private Aid cardAid;
     private byte[] cardSerialNumber;
     private byte[] cardIndex;
     private byte[] signature;
@@ -451,13 +439,8 @@ final class CardCertificate {
       return this;
     }
 
-    Builder cardAidSize(byte cardAidSize) {
-      this.cardAidSize = cardAidSize;
-      return this;
-    }
-
-    Builder cardAidValue(byte[] cardAidValue) {
-      this.cardAidValue = cardAidValue;
+    Builder cardAid(Aid cardAid) {
+      this.cardAid = cardAid;
       return this;
     }
 

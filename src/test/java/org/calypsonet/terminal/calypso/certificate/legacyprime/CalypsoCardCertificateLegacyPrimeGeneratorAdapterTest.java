@@ -180,7 +180,7 @@ class CalypsoCardCertificateLegacyPrimeGeneratorAdapterTest {
     // When & Then
     assertThatIllegalArgumentException()
         .isThrownBy(() -> generator.withCardAid(null))
-        .withMessageContaining("aid");
+        .withMessageContaining("AID value cannot be null");
   }
 
   @Test

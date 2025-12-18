@@ -126,27 +126,7 @@ final class CertificateConstants {
   /** Maximum AID length in bytes (16). */
   static final int AID_MAX_LENGTH = 16;
 
-  // ==================== CA Scope Values ====================
-
-  /** CA scope value: not specified (0x00). */
-  static final byte CA_SCOPE_NOT_SPECIFIED = (byte) 0x00;
-
-  /** CA scope value: specific scope (0x01). */
-  static final byte CA_SCOPE_SPECIFIC = (byte) 0x01;
-
-  /** CA scope value: universal scope (0xFF). */
-  static final byte CA_SCOPE_UNIVERSAL = (byte) 0xFF;
-
   // ==================== Certificate Rights ====================
-
-  /** Certificate right: not specified (0b00). */
-  static final int CERT_RIGHT_NOT_SPECIFIED = 0x00;
-
-  /** Certificate right: shall not sign (0b01). */
-  static final int CERT_RIGHT_SHALL_NOT_SIGN = 0x01;
-
-  /** Certificate right: may sign (0b10). */
-  static final int CERT_RIGHT_MAY_SIGN = 0x02;
 
   /** Certificate right: reserved for future use (0b11). */
   static final int CERT_RIGHT_RFU = 0x03;

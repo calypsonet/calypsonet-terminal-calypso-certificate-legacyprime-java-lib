@@ -139,11 +139,15 @@ final class KeyReference {
 
     int offset = 0;
 
-    // AID (17 bytes: 1 byte size + 16 bytes value)
-    byte[] aidBytes = new byte[1 + CertificateConstants.AID_VALUE_SIZE];
-    System.arraycopy(keyReference, offset, aidBytes, 0, 1 + CertificateConstants.AID_VALUE_SIZE);
-    Aid aid = Aid.fromBytes(aidBytes);
-    offset += 1 + CertificateConstants.AID_VALUE_SIZE;
+    // AID size (1 byte)
+    byte aidSize = keyReference[offset++];
+
+    // AID value (16 bytes)
+    byte[] aidValue = new byte[CertificateConstants.AID_VALUE_SIZE];
+    System.arraycopy(keyReference, offset, aidValue, 0, CertificateConstants.AID_VALUE_SIZE);
+    offset += CertificateConstants.AID_VALUE_SIZE;
+
+    Aid aid = Aid.fromBytes(aidSize, aidValue);
 
     // Serial Number (8 bytes)
     byte[] serialNumber = new byte[CertificateConstants.SERIAL_NUMBER_SIZE];

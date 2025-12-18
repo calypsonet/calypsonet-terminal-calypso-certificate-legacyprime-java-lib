@@ -57,10 +57,16 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
             .certType(CertificateConstants.CERT_TYPE_CA)
             .structureVersion(CertificateConstants.STRUCTURE_VERSION)
             .issuerKeyReference(issuerPublicKeyReference)
-            .caTargetAidSize((byte) 0xFF) // default value RFU
-            .caTargetAidValue(new byte[CertificateConstants.AID_VALUE_SIZE]) // default value 0
-            .caRfu1(new byte[CertificateConstants.CA_RFU1_SIZE]) // default value 0
-            .caRfu2(new byte[CertificateConstants.CA_RFU2_SIZE]); // default value 0
+            .caTargetKeyReference(new byte[CertificateConstants.KEY_REFERENCE_SIZE])
+            .startDate(new byte[CertificateConstants.DATE_SIZE])
+            .caRfu1(new byte[CertificateConstants.CA_RFU1_SIZE])
+            .caRights(CaRights.CA_RIGHTS_NOT_SPECIFIED)
+            .caScope(CaScope.NOT_SPECIFIED.getValue())
+            .endDate(new byte[CertificateConstants.DATE_SIZE])
+            .caTargetAidSize(Aid.AID_SIZE_RFU)
+            .caTargetAidValue(new byte[CertificateConstants.AID_VALUE_SIZE])
+            .caOperatingMode(OperatingMode.TRUNCATION_FORBIDDEN.getValue())
+            .caRfu2(new byte[CertificateConstants.CA_RFU2_SIZE]);
   }
 
   /**
@@ -131,35 +137,17 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
    */
   @Override
   public CalypsoCaCertificateLegacyPrimeGenerator withTargetAid(byte[] aid, boolean isTruncated) {
-    Assert.getInstance()
-        .notNull(aid, "aid")
-        .isInRange(
-            aid.length,
-            CertificateConstants.AID_MIN_LENGTH,
-            CertificateConstants.AID_MAX_LENGTH,
-            "aid length");
+    final Aid targetAid = Aid.fromUnpaddedValue(aid);
 
-    // Check if AID contains only zero bytes
-    boolean allZeros = true;
-    for (byte b : aid) {
-      if (b != 0) {
-        allZeros = false;
-        break;
-      }
-    }
-
-    Assert.getInstance().isTrue(!allZeros, "AID cannot contain only zero bytes");
-
-    // Prepare padded AID value
-    byte caTargetAidSize = (byte) aid.length;
-    byte[] caTargetAidValue = new byte[CertificateConstants.AID_VALUE_SIZE];
-    System.arraycopy(aid, 0, caTargetAidValue, 0, aid.length);
+    // TODO check with issuer rights?
 
     certificateBuilder
-        .caTargetAidSize(caTargetAidSize)
-        .caTargetAidValue(caTargetAidValue)
-        .caOperatingMode(isTruncated ? (byte) 1 : (byte) 0);
-
+        .caTargetAidSize(targetAid.getSize())
+        .caTargetAidValue(targetAid.getPaddedValue())
+        .caOperatingMode(
+            isTruncated
+                ? OperatingMode.TRUNCATION_ALLOWED.getValue()
+                : OperatingMode.TRUNCATION_FORBIDDEN.getValue());
     return this;
   }
 
@@ -170,20 +158,7 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
    */
   @Override
   public CalypsoCaCertificateLegacyPrimeGenerator withCaRights(byte caRights) {
-    // Check that bits b7-b4 are 0 (RFU)
-    if ((caRights & CertificateConstants.MASK_HIGH_NIBBLE) != 0) {
-      throw new IllegalArgumentException("CA rights bits b7-b4 must be 0 (RFU)");
-    }
-    // Check that bits b3-b2 and b1-b0 don't have value %11 (RFU)
-    int cardCertRight =
-        (caRights >> CertificateConstants.SHIFT_CARD_CERT_RIGHT)
-            & CertificateConstants.MASK_TWO_BITS;
-    int caCertRight = caRights & CertificateConstants.MASK_TWO_BITS;
-    if (cardCertRight == CertificateConstants.CERT_RIGHT_RFU
-        || caCertRight == CertificateConstants.CERT_RIGHT_RFU) {
-      throw new IllegalArgumentException("CA rights value %11 is reserved for future use");
-    }
-
+    CaRights.fromByte(caRights); // Check validity of caRights parameter
     certificateBuilder.caRights(caRights);
     return this;
   }
@@ -195,20 +170,13 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
    */
   @Override
   public CalypsoCaCertificateLegacyPrimeGenerator withCaScope(byte caScope) {
-    // Check that the value is valid
-    if (caScope != CertificateConstants.CA_SCOPE_NOT_SPECIFIED
-        && caScope != CertificateConstants.CA_SCOPE_SPECIFIC
-        && caScope != CertificateConstants.CA_SCOPE_UNIVERSAL) {
-      throw new IllegalArgumentException(
-          "CA scope must be 0x00 (not specified), 0x01 (limited), or 0xFF (full)");
-    }
+    CaScope targetCaScope = CaScope.fromByte(caScope);
 
     // Check consistency with issuer scope
     if (issuerCaCertificate != null) {
       CaScope issuerScope = issuerCaCertificate.getCaScope();
       // A universal scope cannot be generated from a limited-scope issuer.
-      if (issuerScope != CaScope.NOT_RESTRICTED
-          && caScope == CertificateConstants.CA_SCOPE_UNIVERSAL) {
+      if (issuerScope != CaScope.NOT_RESTRICTED && targetCaScope == CaScope.NOT_RESTRICTED) {
         throw new IllegalArgumentException(
             "Cannot generate a certificate with universal scope from an issuer with restricted scope.");
       }
