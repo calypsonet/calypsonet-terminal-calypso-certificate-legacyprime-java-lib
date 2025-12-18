@@ -380,8 +380,7 @@ class CalypsoCaCertificateLegacyPrimeGeneratorAdapterTest {
         .caRights((byte) 0x01)
         .caScope((byte) 0xFF)
         .endDate(new byte[4])
-        .caTargetAidSize(effectiveTargetAid.getSize())
-        .caTargetAidValue(effectiveTargetAid.getPaddedValue())
+        .caTargetAidValue(effectiveTargetAid.getUnpaddedValue())
         .caOperatingMode(operatingMode)
         .caRfu2(new byte[2])
         .publicKeyHeader(new byte[34])
@@ -486,7 +485,7 @@ class CalypsoCaCertificateLegacyPrimeGeneratorAdapterTest {
     // When & Then
     assertThatIllegalArgumentException()
         .isThrownBy(() -> generator.withTargetAid(null, false))
-        .withMessageContaining("AID value cannot be null");
+        .withMessageContaining("AID size must be between 5 and 16 or FFh (RFU), got 0");
   }
 
   @Test

@@ -26,7 +26,7 @@ class CaCertificateTest {
   private byte[] startDate;
   private byte[] endDate;
   private byte[] caRfu1;
-  private Aid caTargetAid;
+  private byte[] caTargetAid;
   private byte[] caRfu2;
   private byte[] publicKeyHeader;
   private byte[] signature;
@@ -74,11 +74,10 @@ class CaCertificateTest {
     caRfu1 = new byte[] {0x00, 0x00, 0x00, 0x00};
     caRfu2 = new byte[] {0x00, 0x00};
 
-    byte[] aidValue = new byte[16];
+    caTargetAid = new byte[16];
     for (int i = 0; i < 16; i++) {
-      aidValue[i] = (byte) (0xA0 + i);
+      caTargetAid[i] = (byte) (0xA0 + i);
     }
-    caTargetAid = Aid.fromUnpaddedValue(aidValue);
 
     publicKeyHeader = new byte[34];
     for (int i = 0; i < 34; i++) {
@@ -110,6 +109,7 @@ class CaCertificateTest {
         builder
             .certType((byte) 0x90)
             .structureVersion((byte) 0x01)
+            .caRights((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
             .caTargetKeyReference(caTargetKeyReference)
             .startDate(startDate)
@@ -117,8 +117,7 @@ class CaCertificateTest {
             .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
-            .caTargetAidSize(caTargetAid.getSize())
-            .caTargetAidValue(caTargetAid.getPaddedValue())
+            .caTargetAidValue(caTargetAid)
             .caOperatingMode((byte) 0x01)
             .caRfu2(caRfu2)
             .publicKeyHeader(publicKeyHeader)
@@ -140,6 +139,7 @@ class CaCertificateTest {
         builder
             .certType((byte) 0x90)
             .structureVersion((byte) 0x01)
+            .caRights((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
             .caTargetKeyReference(caTargetKeyReference)
             .startDate(startDate)
@@ -147,8 +147,7 @@ class CaCertificateTest {
             .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
-            .caTargetAidSize(caTargetAid.getSize())
-            .caTargetAidValue(caTargetAid.getPaddedValue())
+            .caTargetAidValue(caTargetAid)
             .caOperatingMode((byte) 0x01)
             .caRfu2(caRfu2)
             .publicKeyHeader(publicKeyHeader)
@@ -200,11 +199,11 @@ class CaCertificateTest {
     }
 
     // KCertCaTargetAidSize (1 byte)
-    assertThat(bytes[offset++]).isEqualTo(caTargetAid.getSize());
+    assertThat(bytes[offset++]).isEqualTo((byte) caTargetAid.length);
 
     // KCertCaTargetAidValue (16 bytes)
     for (int i = 0; i < 16; i++) {
-      assertThat(bytes[offset++]).isEqualTo(caTargetAid.getPaddedValue()[i]);
+      assertThat(bytes[offset++]).isEqualTo(caTargetAid[i]);
     }
 
     // KCertCaOperatingMode (1 byte)
@@ -230,15 +229,15 @@ class CaCertificateTest {
         builder
             .certType((byte) 0x90)
             .structureVersion((byte) 0x01)
+            .caRights((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
             .caTargetKeyReference(caTargetKeyReference)
-            .startDate(null) // Null start date
+            .startDate(new byte[CertificateConstants.DATE_SIZE]) // Null start date
             .caRfu1(caRfu1)
             .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
-            .endDate(endDate)
-            .caTargetAidSize(caTargetAid.getSize())
-            .caTargetAidValue(caTargetAid.getPaddedValue())
+            .endDate(new byte[CertificateConstants.DATE_SIZE])
+            .caTargetAidValue(caTargetAid)
             .caOperatingMode((byte) 0x01)
             .caRfu2(caRfu2)
             .publicKeyHeader(publicKeyHeader)
@@ -266,6 +265,7 @@ class CaCertificateTest {
         builder
             .certType((byte) 0x90)
             .structureVersion((byte) 0x01)
+            .caRights((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
             .caTargetKeyReference(caTargetKeyReference)
             .startDate(startDate)
@@ -273,8 +273,7 @@ class CaCertificateTest {
             .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
-            .caTargetAidSize(caTargetAid.getSize())
-            .caTargetAidValue(caTargetAid.getPaddedValue())
+            .caTargetAidValue(caTargetAid)
             .caOperatingMode((byte) 0x01)
             .caRfu2(caRfu2)
             .publicKeyHeader(publicKeyHeader)
@@ -296,6 +295,7 @@ class CaCertificateTest {
         builder
             .certType((byte) 0x90)
             .structureVersion((byte) 0x01)
+            .caRights((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
             .caTargetKeyReference(caTargetKeyReference)
             .startDate(startDate)
@@ -303,8 +303,7 @@ class CaCertificateTest {
             .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
-            .caTargetAidSize(caTargetAid.getSize())
-            .caTargetAidValue(caTargetAid.getPaddedValue())
+            .caTargetAidValue(caTargetAid)
             .caOperatingMode((byte) 0x01)
             .caRfu2(caRfu2)
             .publicKeyHeader(publicKeyHeader)
@@ -335,6 +334,7 @@ class CaCertificateTest {
         builder
             .certType((byte) 0x90)
             .structureVersion((byte) 0x01)
+            .caRights((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
             .caTargetKeyReference(caTargetKeyReference)
             .startDate(startDate)
@@ -342,8 +342,7 @@ class CaCertificateTest {
             .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
-            .caTargetAidSize(caTargetAid.getSize())
-            .caTargetAidValue(caTargetAid.getPaddedValue())
+            .caTargetAidValue(caTargetAid)
             .caOperatingMode((byte) 0x01)
             .caRfu2(caRfu2)
             .publicKeyHeader(publicKeyHeader)
@@ -368,6 +367,7 @@ class CaCertificateTest {
         builder
             .certType((byte) 0x90)
             .structureVersion((byte) 0x01)
+            .caRights((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
             .caTargetKeyReference(caTargetKeyReference)
             .startDate(startDate)
@@ -375,8 +375,7 @@ class CaCertificateTest {
             .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
-            .caTargetAidSize(caTargetAid.getSize())
-            .caTargetAidValue(caTargetAid.getPaddedValue())
+            .caTargetAidValue(caTargetAid)
             .caOperatingMode((byte) 0x01)
             .caRfu2(caRfu2)
             .publicKeyHeader(publicKeyHeader)
@@ -410,6 +409,7 @@ class CaCertificateTest {
         builder
             .certType((byte) 0x90)
             .structureVersion((byte) 0x01)
+            .caRights((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
             .caTargetKeyReference(caTargetKeyReference)
             .startDate(startDate)
@@ -417,8 +417,7 @@ class CaCertificateTest {
             .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
-            .caTargetAidSize(caTargetAid.getSize())
-            .caTargetAidValue(caTargetAid.getPaddedValue())
+            .caTargetAidValue(caTargetAid)
             .caOperatingMode((byte) 0x01)
             .caRfu2(caRfu2)
             .publicKeyHeader(publicKeyHeader)
@@ -476,6 +475,7 @@ class CaCertificateTest {
         builder
             .certType((byte) 0x90)
             .structureVersion((byte) 0x01)
+            .caRights((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
             .caTargetKeyReference(caTargetKeyReference)
             .startDate(startDate)
@@ -483,8 +483,7 @@ class CaCertificateTest {
             .caRights((byte) 0x01)
             .caScope((byte) 0xFF)
             .endDate(endDate)
-            .caTargetAidSize(caTargetAid.getSize())
-            .caTargetAidValue(caTargetAid.getPaddedValue())
+            .caTargetAidValue(caTargetAid)
             .caOperatingMode((byte) 0x01)
             .caRfu2(caRfu2)
             .publicKeyHeader(publicKeyHeader)

@@ -46,24 +46,17 @@ final class CaCertificate {
    * @since 0.1.0
    */
   private CaCertificate(Builder builder) {
-    this.certType = CertificateType.fromByte(builder.certType);
+    this.certType = builder.certType;
     this.structureVersion = builder.structureVersion;
-    this.issuerKeyReference =
-        builder.issuerKeyReference != null
-            ? KeyReference.fromBytes(builder.issuerKeyReference)
-            : null;
-    this.caTargetKeyReference =
-        builder.caTargetKeyReference != null
-            ? KeyReference.fromBytes(builder.caTargetKeyReference)
-            : null;
-    this.startDate =
-        builder.startDate != null ? CertificateUtils.decodeDateBcd(builder.startDate) : null;
+    this.issuerKeyReference = builder.issuerKeyReference;
+    this.caTargetKeyReference = builder.caTargetKeyReference;
+    this.startDate = builder.startDate;
     this.caRfu1 = builder.caRfu1 != null ? builder.caRfu1.clone() : null;
-    this.caRights = CaRights.fromByte(builder.caRights);
-    this.caScope = CaScope.fromByte(builder.caScope);
-    this.endDate = builder.endDate != null ? CertificateUtils.decodeDateBcd(builder.endDate) : null;
-    this.caTargetAid = Aid.fromBytes(builder.caTargetAidSize, builder.caTargetAidValue);
-    this.caOperatingMode = OperatingMode.fromByte(builder.caOperatingMode);
+    this.caRights = builder.caRights;
+    this.caScope = builder.caScope;
+    this.endDate = builder.endDate;
+    this.caTargetAid = builder.caTargetAid;
+    this.caOperatingMode = builder.caOperatingMode;
     this.caRfu2 = builder.caRfu2 != null ? builder.caRfu2.clone() : null;
     this.publicKeyHeader = builder.publicKeyHeader != null ? builder.publicKeyHeader.clone() : null;
     this.signature = builder.signature != null ? builder.signature.clone() : null;
@@ -486,8 +479,7 @@ final class CaCertificate {
         .caRights(caRights)
         .caScope(caScope)
         .endDate(endDate)
-        .caTargetAidSize(caTargetAidSize)
-        .caTargetAidValue(caTargetAidValue)
+        .caTargetAid(caTargetAidSize, caTargetAidValue)
         .caOperatingMode(caOperatingMode)
         .caRfu2(caRfu2)
         .publicKeyHeader(caPublicKeyHeader)
@@ -512,18 +504,17 @@ final class CaCertificate {
    * @since 0.1.0
    */
   static final class Builder {
-    private byte certType;
+    private CertificateType certType;
     private byte structureVersion;
-    private byte[] issuerKeyReference;
-    private byte[] caTargetKeyReference;
-    private byte[] startDate;
+    private KeyReference issuerKeyReference;
+    private KeyReference caTargetKeyReference;
+    private LocalDate startDate;
     private byte[] caRfu1;
-    private byte caRights;
-    private byte caScope;
-    private byte[] endDate;
-    private byte caTargetAidSize;
-    private byte[] caTargetAidValue;
-    private byte caOperatingMode;
+    private CaRights caRights;
+    private CaScope caScope;
+    private LocalDate endDate;
+    private Aid caTargetAid;
+    private OperatingMode caOperatingMode;
     private byte[] caRfu2;
     private byte[] publicKeyHeader;
     private byte[] signature;
@@ -532,6 +523,11 @@ final class CaCertificate {
     private Builder() {}
 
     Builder certType(byte certType) {
+      this.certType = CertificateType.fromByte(certType);
+      return this;
+    }
+
+    Builder certType(CertificateType certType) {
       this.certType = certType;
       return this;
     }
@@ -542,17 +538,17 @@ final class CaCertificate {
     }
 
     Builder issuerKeyReference(byte[] issuerKeyReference) {
-      this.issuerKeyReference = issuerKeyReference;
+      this.issuerKeyReference = KeyReference.fromBytes(issuerKeyReference);
       return this;
     }
 
     Builder caTargetKeyReference(byte[] caTargetKeyReference) {
-      this.caTargetKeyReference = caTargetKeyReference;
+      this.caTargetKeyReference = KeyReference.fromBytes(caTargetKeyReference);
       return this;
     }
 
     Builder startDate(byte[] startDate) {
-      this.startDate = startDate;
+      this.startDate = CertificateUtils.decodeDateBcd(startDate);
       return this;
     }
 
@@ -562,32 +558,32 @@ final class CaCertificate {
     }
 
     Builder caRights(byte caRights) {
-      this.caRights = caRights;
+      this.caRights = CaRights.fromByte(caRights);
       return this;
     }
 
     Builder caScope(byte caScope) {
-      this.caScope = caScope;
+      this.caScope = CaScope.fromByte(caScope);
       return this;
     }
 
     Builder endDate(byte[] endDate) {
-      this.endDate = endDate;
-      return this;
-    }
-
-    public Builder caTargetAidSize(byte caTargetAidSize) {
-      this.caTargetAidSize = caTargetAidSize;
+      this.endDate = CertificateUtils.decodeDateBcd(endDate);
       return this;
     }
 
     Builder caTargetAidValue(byte[] caTargetAidValue) {
-      this.caTargetAidValue = caTargetAidValue;
+      this.caTargetAid = Aid.fromUnpaddedValue(caTargetAidValue);
+      return this;
+    }
+
+    Builder caTargetAid(byte caTargetAidSize, byte[] caTargetAidValue) {
+      this.caTargetAid = Aid.fromBytes(caTargetAidSize, caTargetAidValue);
       return this;
     }
 
     Builder caOperatingMode(byte caOperatingMode) {
-      this.caOperatingMode = caOperatingMode;
+      this.caOperatingMode = OperatingMode.fromByte(caOperatingMode);
       return this;
     }
 
@@ -614,6 +610,7 @@ final class CaCertificate {
      * @since 0.1.0
      */
     Builder rsaPublicKey(RSAPublicKey rsaPublicKey) {
+      CertificateUtils.checkRSA2048PublicKey(rsaPublicKey);
       this.rsaPublicKey = rsaPublicKey;
       return this;
     }
