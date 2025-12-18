@@ -51,15 +51,15 @@ final class CaCertificate {
     this.issuerKeyReference = builder.issuerKeyReference;
     this.caTargetKeyReference = builder.caTargetKeyReference;
     this.startDate = builder.startDate;
-    this.caRfu1 = builder.caRfu1 != null ? builder.caRfu1.clone() : null;
+    this.caRfu1 = builder.caRfu1;
     this.caRights = builder.caRights;
     this.caScope = builder.caScope;
     this.endDate = builder.endDate;
     this.caTargetAid = builder.caTargetAid;
     this.caOperatingMode = builder.caOperatingMode;
-    this.caRfu2 = builder.caRfu2 != null ? builder.caRfu2.clone() : null;
-    this.publicKeyHeader = builder.publicKeyHeader != null ? builder.publicKeyHeader.clone() : null;
-    this.signature = builder.signature != null ? builder.signature.clone() : null;
+    this.caRfu2 = builder.caRfu2;
+    this.publicKeyHeader = builder.publicKeyHeader;
+    this.signature = builder.signature;
     this.rsaPublicKey = builder.rsaPublicKey;
   }
 
@@ -101,66 +101,6 @@ final class CaCertificate {
    */
   byte[] getCaTargetKeyReference() {
     return caTargetKeyReference.toBytes();
-  }
-
-  /**
-   * Gets the issuer key reference as an object.
-   *
-   * @return The issuer key reference.
-   * @since 0.1.0
-   */
-  KeyReference getIssuerKeyReferenceObject() {
-    return issuerKeyReference;
-  }
-
-  /**
-   * Gets the CA target key reference as an object.
-   *
-   * @return The CA target key reference.
-   * @since 0.1.0
-   */
-  KeyReference getCaTargetKeyReferenceObject() {
-    return caTargetKeyReference;
-  }
-
-  /**
-   * Gets the CA AID size from the target key reference.
-   *
-   * @return The CA AID size (5-16).
-   * @since 0.1.0
-   */
-  byte getCaAidSize() {
-    return caTargetKeyReference.getAidSize();
-  }
-
-  /**
-   * Gets the CA AID value from the target key reference.
-   *
-   * @return A copy of the CA AID value (16 bytes, padded).
-   * @since 0.1.0
-   */
-  byte[] getCaAidValue() {
-    return caTargetKeyReference.getAidValue();
-  }
-
-  /**
-   * Gets the CA serial number from the target key reference.
-   *
-   * @return A copy of the CA serial number (8 bytes).
-   * @since 0.1.0
-   */
-  byte[] getCaSerialNumber() {
-    return caTargetKeyReference.getSerialNumber();
-  }
-
-  /**
-   * Gets the CA key ID from the target key reference.
-   *
-   * @return A copy of the CA key ID (4 bytes).
-   * @since 0.1.0
-   */
-  byte[] getCaKeyId() {
-    return caTargetKeyReference.getKeyId();
   }
 
   /**
@@ -527,11 +467,6 @@ final class CaCertificate {
       return this;
     }
 
-    Builder certType(CertificateType certType) {
-      this.certType = certType;
-      return this;
-    }
-
     Builder structureVersion(byte structureVersion) {
       this.structureVersion = structureVersion;
       return this;
@@ -553,7 +488,7 @@ final class CaCertificate {
     }
 
     Builder caRfu1(byte[] caRfu1) {
-      this.caRfu1 = caRfu1;
+      this.caRfu1 = caRfu1.clone();
       return this;
     }
 
@@ -588,27 +523,20 @@ final class CaCertificate {
     }
 
     Builder caRfu2(byte[] caRfu2) {
-      this.caRfu2 = caRfu2;
+      this.caRfu2 = caRfu2.clone();
       return this;
     }
 
     Builder publicKeyHeader(byte[] publicKeyHeader) {
-      this.publicKeyHeader = publicKeyHeader;
+      this.publicKeyHeader = publicKeyHeader.clone();
       return this;
     }
 
     Builder signature(byte[] signature) {
-      this.signature = signature;
+      this.signature = signature.clone();
       return this;
     }
 
-    /**
-     * Sets the RSA public key.
-     *
-     * @param rsaPublicKey The RSA public key.
-     * @return This builder instance.
-     * @since 0.1.0
-     */
     Builder rsaPublicKey(RSAPublicKey rsaPublicKey) {
       CertificateUtils.checkRSA2048PublicKey(rsaPublicKey);
       this.rsaPublicKey = rsaPublicKey;

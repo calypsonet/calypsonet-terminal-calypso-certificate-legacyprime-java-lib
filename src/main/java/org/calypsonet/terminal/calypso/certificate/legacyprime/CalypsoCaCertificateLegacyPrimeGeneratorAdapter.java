@@ -28,13 +28,10 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
     implements CalypsoCaCertificateLegacyPrimeGenerator {
 
   private final CalypsoCertificateLegacyPrimeStoreAdapter store;
-  private final byte[] issuerPublicKeyReference;
   private final CalypsoCertificateLegacyPrimeSigner signer;
   private RSAPublicKey caPublicKey;
   private final CaCertificate issuerCaCertificate;
   private final CaCertificate.Builder certificateBuilder;
-
-  private byte[] caPublicKeyReference;
 
   /**
    * Creates a new generator instance.
@@ -49,10 +46,9 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
       byte[] issuerPublicKeyReference,
       CalypsoCertificateLegacyPrimeSigner signer) {
     this.store = store;
-    this.issuerPublicKeyReference = issuerPublicKeyReference.clone();
     this.signer = signer;
     this.issuerCaCertificate = store.getCaCertificate(issuerPublicKeyReference);
-    // Initialize the certificate builder with known values
+    // Initialize the certificate builder with known and default values
     this.certificateBuilder =
         CaCertificate.builder()
             .certType(CertificateConstants.CERT_TYPE_CA)
@@ -69,6 +65,49 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
   }
 
   /**
+   * Validates that the CA AID respects the issuer's constraints.
+   *
+   * <p>According to the Calypso specification (KCertCaOperatingMode):
+   *
+   * <ul>
+   *   <li>If issuer has no target AID specified (is null), no validation is performed
+   *   <li>If truncation is forbidden (bit b0 = 0): CA AID must exactly match issuer's target AID
+   *   <li>If truncation is allowed (bit b0 = 1): CA AID must start with issuer's target AID
+   * </ul>
+   *
+   * @param caPublicKeyReference The CA public key reference containing the CA AID.
+   * @throws IllegalArgumentException if the CA AID does not respect issuer's constraints.
+   */
+  static void validateAidAgainstIssuerConstraints(
+      byte[] caPublicKeyReference, CaCertificate issuerCaCertificate) {
+
+    Aid issuerTargetAid = issuerCaCertificate.getCaTargetAid();
+
+    // If issuer has no specific target AID (is null or RFU), no validation needed
+    if (issuerTargetAid == null || issuerTargetAid.isRfu()) {
+      return;
+    }
+
+    // Extract CA AID from caPublicKeyReference
+    KeyReference keyReference = KeyReference.fromBytes(caPublicKeyReference);
+    Aid caAid = keyReference.getAid();
+
+    // Get issuer's operating mode
+    OperatingMode issuerOperatingMode = issuerCaCertificate.getCaOperatingMode();
+
+    if (!caAid.matches(issuerTargetAid, issuerOperatingMode)) {
+      throw new IllegalArgumentException(
+          "CA AID '"
+              + caAid
+              + "' does not match issuer's target AID constraints (issuer AID: '"
+              + issuerTargetAid
+              + "', mode: "
+              + issuerOperatingMode
+              + ").");
+    }
+  }
+
+  /**
    * {@inheritDoc}
    *
    * @since 0.1.0
@@ -76,22 +115,13 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
   @Override
   public CalypsoCaCertificateLegacyPrimeGenerator withCaPublicKey(
       byte[] caPublicKeyReference, RSAPublicKey caPublicKey) {
-    Assert.getInstance()
-        .notNull(caPublicKeyReference, "caPublicKeyReference")
-        .isEqual(
-            caPublicKeyReference.length,
-            CertificateConstants.KEY_REFERENCE_SIZE,
-            "caPublicKeyReference length");
-
+    certificateBuilder.caTargetKeyReference(caPublicKeyReference).rsaPublicKey(caPublicKey);
     if (store.containsPublicKeyReference(caPublicKeyReference)) {
       throw new IllegalArgumentException("CA public key already exists in store");
     }
-
-    // Validate CA AID against issuer constraints
-    CertificateUtils.validateAidAgainstIssuerConstraints(caPublicKeyReference, issuerCaCertificate);
-
-    this.caPublicKeyReference = caPublicKeyReference.clone();
-    certificateBuilder.caTargetKeyReference(caPublicKeyReference).rsaPublicKey(caPublicKey);
+    if (issuerCaCertificate != null) {
+      validateAidAgainstIssuerConstraints(caPublicKeyReference, issuerCaCertificate);
+    }
     this.caPublicKey = caPublicKey;
     return this;
   }
@@ -107,7 +137,6 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
         .isInRange(year, 0, 9999, "year")
         .isInRange(month, 1, 12, "month")
         .isInRange(day, 1, 31, "day");
-
     certificateBuilder.startDate(CertificateUtils.encodeDateBcd(year, month, day));
     return this;
   }
@@ -123,7 +152,6 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
         .isInRange(year, 0, 9999, "year")
         .isInRange(month, 1, 12, "month")
         .isInRange(day, 1, 31, "day");
-
     certificateBuilder.endDate(CertificateUtils.encodeDateBcd(year, month, day));
     return this;
   }
@@ -135,7 +163,6 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
    */
   @Override
   public CalypsoCaCertificateLegacyPrimeGenerator withTargetAid(byte[] aid, boolean isTruncated) {
-
     certificateBuilder
         .caTargetAidValue(aid)
         .caOperatingMode(
@@ -163,8 +190,7 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
    */
   @Override
   public CalypsoCaCertificateLegacyPrimeGenerator withCaScope(byte caScope) {
-
-    // Check consistency with issuer scope
+    certificateBuilder.caScope(caScope);
     if (issuerCaCertificate != null) {
       CaScope issuerCaScope = issuerCaCertificate.getCaScope();
       CaScope targetCaScope = CaScope.fromByte(caScope);
@@ -173,8 +199,6 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
             "Cannot generate a certificate with universal scope from an issuer with restricted scope.");
       }
     }
-
-    certificateBuilder.caScope(caScope);
     return this;
   }
 
@@ -186,10 +210,11 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
   @Override
   public byte[] generate() {
     // Validate required parameters
-    if (caPublicKeyReference == null) {
+    if (caPublicKey == null) {
       throw new IllegalStateException("CA public key must be set");
     }
 
+    // Validate time checks
     if (issuerCaCertificate != null) {
       // Check validity period
       LocalDate today = LocalDate.now();
@@ -203,28 +228,11 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
       }
     }
 
-    // Extract the public key header (first 34 bytes of RSA modulus)
-    byte[] modulus = caPublicKey.getModulus().toByteArray();
-    byte[] publicKeyHeader = new byte[CertificateConstants.PUBLIC_KEY_HEADER_SIZE];
-
-    // Handle potential leading zero byte in modulus
-    int srcPos = (modulus.length == 257 && modulus[0] == 0) ? 1 : 0;
-    System.arraycopy(
-        modulus, srcPos, publicKeyHeader, 0, CertificateConstants.PUBLIC_KEY_HEADER_SIZE);
-
-    certificateBuilder.publicKeyHeader(publicKeyHeader);
+    // Set the public key header into the builder and build recoverable data
+    byte[] recoverableData = setPublicKeyHeaderAndBuildRecoverableData();
 
     // Build certificate bytes for signing (128 bytes from KCertType to KCertPublicKeyHeader)
-    byte[] dataToSign = buildCertificateDataForSigning();
-
-    // extract recoverable data (last 222 bytes of RSA modulus)
-    byte[] recoverableData = new byte[CertificateConstants.RECOVERABLE_DATA_SIZE];
-    System.arraycopy(
-        modulus,
-        srcPos + CertificateConstants.PUBLIC_KEY_HEADER_SIZE,
-        recoverableData,
-        0,
-        CertificateConstants.PUBLIC_KEY_HEADER_SIZE);
+    byte[] dataToSign = certificateBuilder.build().toBytesForSigning();
 
     // Sign the data using the signer (no recoverable data for CA certificates)
     byte[] signedCertificate = signer.generateSignedCertificate(dataToSign, recoverableData);
@@ -239,26 +247,49 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
               + " bytes");
     }
 
+    // Check if something was altered during signing
+    for (int i = 0; i < dataToSign.length; i++) {
+      if (dataToSign[i] != signedCertificate[i]) {
+        throw new CertificateSigningException("Certificate signing failed");
+      }
+    }
+
     return signedCertificate;
   }
 
   /**
-   * Builds the certificate data to be signed (128 bytes).
+   * Extracts the public key header from the modulus of the CA public key and sets it within the
+   * certificate builder. Additionally, builds and returns the recoverable data from the modulus.
    *
-   * @return The data to sign.
+   * <p>The public key header consists of the first 34 bytes of the RSA modulus, while the
+   * recoverable data comprises the subsequent 222 bytes. If the modulus is 257 bytes long and
+   * starts with a leading zero (due to encoding), this leading zero is excluded in the extraction
+   * process.
+   *
+   * @return A byte array containing the recoverable data extracted from the modulus, which is 222
+   *     bytes in length.
    */
-  private byte[] buildCertificateDataForSigning() {
-    CaCertificate tempCert = certificateBuilder.build();
-    return tempCert.toBytesForSigning();
-  }
+  private byte[] setPublicKeyHeaderAndBuildRecoverableData() {
 
-  /**
-   * Serializes the CA certificate to a 384-byte array.
-   *
-   * @param certificate The certificate to serialize.
-   * @return The serialized certificate.
-   */
-  private byte[] serializeCaCertificate(CaCertificate certificate) {
-    return certificate.toBytes();
+    // Extract the public key header (first 34 bytes of RSA modulus)
+    byte[] modulus = caPublicKey.getModulus().toByteArray();
+    byte[] publicKeyHeader = new byte[CertificateConstants.PUBLIC_KEY_HEADER_SIZE];
+
+    // Handle potential leading zero byte in modulus
+    int srcPos = (modulus.length == 257 && modulus[0] == 0) ? 1 : 0;
+    System.arraycopy(
+        modulus, srcPos, publicKeyHeader, 0, CertificateConstants.PUBLIC_KEY_HEADER_SIZE);
+
+    certificateBuilder.publicKeyHeader(publicKeyHeader);
+
+    // extract recoverable data (last 222 bytes of RSA modulus)
+    byte[] recoverableData = new byte[CertificateConstants.RECOVERABLE_DATA_SIZE];
+    System.arraycopy(
+        modulus,
+        srcPos + CertificateConstants.PUBLIC_KEY_HEADER_SIZE,
+        recoverableData,
+        0,
+        CertificateConstants.PUBLIC_KEY_HEADER_SIZE);
+    return recoverableData;
   }
 }
