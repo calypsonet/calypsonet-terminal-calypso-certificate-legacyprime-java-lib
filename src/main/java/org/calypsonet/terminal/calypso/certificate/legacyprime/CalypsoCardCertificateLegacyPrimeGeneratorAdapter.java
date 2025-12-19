@@ -14,6 +14,7 @@ package org.calypsonet.terminal.calypso.certificate.legacyprime;
 import java.time.LocalDate;
 import org.calypsonet.terminal.calypso.certificate.legacyprime.spi.CalypsoCertificateLegacyPrimeSigner;
 import org.eclipse.keyple.core.util.Assert;
+import org.eclipse.keyple.core.util.ByteArrayUtil;
 
 /**
  * Adapter implementation of {@link CalypsoCardCertificateLegacyPrimeGenerator}.
@@ -26,16 +27,9 @@ import org.eclipse.keyple.core.util.Assert;
 final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
     implements CalypsoCardCertificateLegacyPrimeGenerator {
 
-  private final CalypsoCertificateLegacyPrimeStoreAdapter store;
-  private final byte[] issuerPublicKeyReference;
   private final CalypsoCertificateLegacyPrimeSigner signer;
   private final CaCertificate issuerCaCertificate;
   private final CardCertificate.Builder certificateBuilder;
-
-  private boolean cardPublicKeySet = false;
-  private boolean cardAidSet = false;
-  private boolean cardSerialNumberSet = false;
-  private boolean cardStartupInfoSet = false;
 
   /**
    * Creates a new generator instance.
@@ -49,8 +43,6 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
       CalypsoCertificateLegacyPrimeStoreAdapter store,
       byte[] issuerPublicKeyReference,
       CalypsoCertificateLegacyPrimeSigner signer) {
-    this.store = store;
-    this.issuerPublicKeyReference = issuerPublicKeyReference.clone();
     this.signer = signer;
     this.issuerCaCertificate = store.getCaCertificate(issuerPublicKeyReference);
     // Initialize the certificate builder with known values
@@ -59,7 +51,12 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
             .certType(CertificateConstants.CERT_TYPE_CARD)
             .structureVersion(CertificateConstants.STRUCTURE_VERSION_01)
             .issuerKeyReference(issuerPublicKeyReference)
-            .cardIndex(new byte[CertificateConstants.CARD_INDEX_SIZE]); // Default index = 0
+            .cardIndex(new byte[CertificateConstants.CARD_INDEX_SIZE]) // Default index = 0
+            .startDate(new byte[CertificateConstants.DATE_SIZE])
+            .endDate(new byte[CertificateConstants.DATE_SIZE])
+            .cardRights((byte) 0x00)
+            .cardRfu(new byte[CertificateConstants.CARD_RFU_SIZE])
+            .eccRfu(new byte[CertificateConstants.ECC_RFU_SIZE]);
   }
 
   /**
@@ -73,9 +70,8 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
         .notNull(cardPublicKey, "cardPublicKey")
         .isEqual(
             cardPublicKey.length, CertificateConstants.ECC_PUBLIC_KEY_SIZE, "cardPublicKey length");
-
+    // TODO check consistency ?
     certificateBuilder.eccPublicKey(cardPublicKey);
-    cardPublicKeySet = true;
     return this;
   }
 
@@ -90,7 +86,6 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
         .isInRange(year, 0, 9999, "year")
         .isInRange(month, 1, 99, "month")
         .isInRange(day, 1, 99, "day");
-
     certificateBuilder.startDate(CertificateUtils.encodeDateBcd(year, month, day));
     return this;
   }
@@ -106,7 +101,6 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
         .isInRange(year, 0, 9999, "year")
         .isInRange(month, 1, 99, "month")
         .isInRange(day, 1, 99, "day");
-
     certificateBuilder.endDate(CertificateUtils.encodeDateBcd(year, month, day));
     return this;
   }
@@ -118,8 +112,7 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
    */
   @Override
   public CalypsoCardCertificateLegacyPrimeGenerator withCardAid(byte[] aid) {
-    certificateBuilder.cardAid(Aid.fromUnpaddedValue(aid));
-    cardAidSet = true;
+    certificateBuilder.cardAidUnpaddedValue(aid);
     return this;
   }
 
@@ -134,9 +127,7 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
         .notNull(serialNumber, "serialNumber")
         .isEqual(
             serialNumber.length, CertificateConstants.SERIAL_NUMBER_SIZE, "serialNumber length");
-
     certificateBuilder.cardSerialNumber(serialNumber);
-    cardSerialNumberSet = true;
     return this;
   }
 
@@ -151,9 +142,7 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
         .notNull(startupInfo, "startupInfo")
         .isEqual(
             startupInfo.length, CertificateConstants.CARD_STARTUP_INFO_SIZE, "startupInfo length");
-
     certificateBuilder.cardInfo(startupInfo);
-    cardStartupInfoSet = true;
     return this;
   }
 
@@ -164,14 +153,7 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
    */
   @Override
   public CalypsoCardCertificateLegacyPrimeGenerator withIndex(int index) {
-    // Encode index as 4-byte big-endian
-    byte[] cardIndex = new byte[CertificateConstants.CARD_INDEX_SIZE];
-    cardIndex[0] = (byte) (index >> 24);
-    cardIndex[1] = (byte) (index >> 16);
-    cardIndex[2] = (byte) (index >> 8);
-    cardIndex[3] = (byte) index;
-
-    certificateBuilder.cardIndex(cardIndex);
+    certificateBuilder.cardIndex(ByteArrayUtil.extractBytes(index, 4));
     return this;
   }
 
@@ -183,22 +165,9 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
   @Override
   public byte[] generate() {
     // Validate required parameters
-    if (!cardPublicKeySet) {
-      throw new IllegalStateException("Card public key must be set");
-    }
+    CardCertificate cardCertificate = certificateBuilder.build();
 
-    if (!cardAidSet) {
-      throw new IllegalStateException("Card AID must be set");
-    }
-
-    if (!cardSerialNumberSet) {
-      throw new IllegalStateException("Card serial number must be set");
-    }
-
-    if (!cardStartupInfoSet) {
-      throw new IllegalStateException("Card startup info must be set");
-    }
-
+    // Validate time checks
     if (issuerCaCertificate != null) {
       // Check validity period
       LocalDate today = LocalDate.now();
@@ -212,78 +181,13 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
       }
     }
 
-    // issuerPublicKeyReference will be converted to KeyReference by the builder
-    certificateBuilder
-        .issuerKeyReference(issuerPublicKeyReference)
-        .cardRights((byte) 0)
-        .cardRfu(new byte[CertificateConstants.CARD_RFU_SIZE])
-        .eccRfu(new byte[CertificateConstants.ECC_RFU_SIZE]);
+    // Build the non-recoverable data for signature (60 bytes)
+    byte[] dataToSign = cardCertificate.toBytesForSigning();
 
     // Build recoverable data (222 bytes) for ISO9796-2 signature
-    byte[] recoverableData = buildRecoverableData();
+    byte[] recoverableData = cardCertificate.getRecoverableDataForSigning();
 
-    // Build the non-recoverable data for signature (60 bytes)
-    byte[] nonRecoverableData = buildNonRecoverableData();
-
-    // Sign using ISO9796-2 with recoverable data
-    byte[] signedCertificate =
-        signer.generateSignedCertificate(nonRecoverableData, recoverableData);
-
-    // Extract signature from signed certificate (last 256 bytes)
-    if (signedCertificate.length
-        != nonRecoverableData.length + CertificateConstants.RSA_SIGNATURE_SIZE) {
-      throw new IllegalStateException(
-          "Signed certificate must be "
-              + (nonRecoverableData.length + CertificateConstants.RSA_SIGNATURE_SIZE)
-              + " bytes, got "
-              + signedCertificate.length
-              + " bytes");
-    }
-
-    byte[] signature = new byte[CertificateConstants.RSA_SIGNATURE_SIZE];
-    System.arraycopy(
-        signedCertificate,
-        nonRecoverableData.length,
-        signature,
-        0,
-        CertificateConstants.RSA_SIGNATURE_SIZE);
-
-    certificateBuilder.signature(signature);
-
-    // Build the final certificate
-    CardCertificate certificate = certificateBuilder.build();
-
-    // Serialize certificate to 316-byte array
-    return serializeCardCertificate(certificate);
-  }
-
-  /**
-   * Builds the recoverable data (222 bytes) for ISO9796-2 signature.
-   *
-   * @return The recoverable data.
-   */
-  private byte[] buildRecoverableData() {
-    CardCertificate tempCert = certificateBuilder.build();
-    return tempCert.getRecoverableDataForSigning();
-  }
-
-  /**
-   * Builds the non-recoverable data (60 bytes) for ISO9796-2 signature.
-   *
-   * @return The non-recoverable data.
-   */
-  private byte[] buildNonRecoverableData() {
-    CardCertificate tempCert = certificateBuilder.build();
-    return tempCert.toBytesForSigning();
-  }
-
-  /**
-   * Serializes the Card certificate to a 316-byte array.
-   *
-   * @param certificate The certificate to serialize.
-   * @return The serialized certificate.
-   */
-  private byte[] serializeCardCertificate(CardCertificate certificate) {
-    return certificate.toBytes();
+    // Generate the signed certificate
+    return CertificateUtils.generateSignedCertificate(dataToSign, recoverableData, signer);
   }
 }

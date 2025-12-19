@@ -56,46 +56,6 @@ final class KeyReference {
   }
 
   /**
-   * Gets the AID size.
-   *
-   * @return The AID size (5-16).
-   * @since 0.1.0
-   */
-  byte getAidSize() {
-    return aid.getSize();
-  }
-
-  /**
-   * Gets the AID value (padded to 16 bytes).
-   *
-   * @return A copy of the AID value (16 bytes, padded).
-   * @since 0.1.0
-   */
-  byte[] getAidValue() {
-    return aid.getPaddedValue();
-  }
-
-  /**
-   * Gets the serial number.
-   *
-   * @return A copy of the serial number (8 bytes).
-   * @since 0.1.0
-   */
-  byte[] getSerialNumber() {
-    return serialNumber.clone();
-  }
-
-  /**
-   * Gets the key ID.
-   *
-   * @return A copy of the key ID (4 bytes).
-   * @since 0.1.0
-   */
-  byte[] getKeyId() {
-    return keyId.clone();
-  }
-
-  /**
    * Serializes the key reference to bytes.
    *
    * @return A 29-byte array containing the key reference.

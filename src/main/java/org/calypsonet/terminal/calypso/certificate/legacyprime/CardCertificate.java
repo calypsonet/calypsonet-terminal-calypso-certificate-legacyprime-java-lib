@@ -30,7 +30,6 @@ final class CardCertificate {
   private final Aid cardAid;
   private final byte[] cardSerialNumber;
   private final byte[] cardIndex;
-  private final byte[] signature;
   // Recoverable data from signature
   private final LocalDate startDate;
   private final LocalDate endDate;
@@ -53,7 +52,6 @@ final class CardCertificate {
     this.cardAid = builder.cardAid;
     this.cardSerialNumber = builder.cardSerialNumber;
     this.cardIndex = builder.cardIndex;
-    this.signature = builder.signature;
     this.startDate = builder.startDate;
     this.endDate = builder.endDate;
     this.cardRights = builder.cardRights;
@@ -61,146 +59,6 @@ final class CardCertificate {
     this.cardRfu = builder.cardRfu;
     this.eccPublicKey = builder.eccPublicKey;
     this.eccRfu = builder.eccRfu;
-  }
-
-  /**
-   * Retrieves the certificate type associated with this Card certificate.
-   *
-   * @return The certificate type as a {@code CertificateType} enum value.
-   * @since 0.1.0
-   */
-  CertificateType getCertType() {
-    return certType;
-  }
-
-  /**
-   * Gets the structure version.
-   *
-   * @return The structure version (0x01).
-   * @since 0.1.0
-   */
-  byte getStructureVersion() {
-    return structureVersion;
-  }
-
-  /**
-   * Gets the issuer key reference.
-   *
-   * @return The issuer key reference.
-   * @since 0.1.0
-   */
-  KeyReference getIssuerKeyReference() {
-    return issuerKeyReference;
-  }
-
-  /**
-   * Gets the card AID object.
-   *
-   * @return The card AID.
-   * @since 0.1.0
-   */
-  Aid getCardAid() {
-    return cardAid;
-  }
-
-  /**
-   * Gets the card serial number.
-   *
-   * @return A copy of the card serial number (8 bytes).
-   * @since 0.1.0
-   */
-  byte[] getCardSerialNumber() {
-    return cardSerialNumber.clone();
-  }
-
-  /**
-   * Gets the card index.
-   *
-   * @return A copy of the card index (4 bytes).
-   * @since 0.1.0
-   */
-  byte[] getCardIndex() {
-    return cardIndex.clone();
-  }
-
-  /**
-   * Gets the signature.
-   *
-   * @return A copy of the signature (256 bytes).
-   * @since 0.1.0
-   */
-  byte[] getSignature() {
-    return signature.clone();
-  }
-
-  /**
-   * Gets the start date from recoverable data.
-   *
-   * @return The start date as a LocalDate, or null if not set.
-   * @since 0.1.0
-   */
-  LocalDate getStartDate() {
-    return startDate;
-  }
-
-  /**
-   * Gets the end date from recoverable data.
-   *
-   * @return The end date as a LocalDate, or null if not set.
-   * @since 0.1.0
-   */
-  LocalDate getEndDate() {
-    return endDate;
-  }
-
-  /**
-   * Retrieves the card rights associated with this certificate.
-   *
-   * @return The card rights representing the permissions.
-   * @since 0.1.0
-   */
-  byte getCardRights() {
-    return cardRights;
-  }
-
-  /**
-   * Gets the card info from recoverable data.
-   *
-   * @return A copy of the card info (7 bytes).
-   * @since 0.1.0
-   */
-  byte[] getCardInfo() {
-    return cardInfo.clone();
-  }
-
-  /**
-   * Gets the RFU field from recoverable data.
-   *
-   * @return A copy of the RFU field (18 bytes).
-   * @since 0.1.0
-   */
-  byte[] getCardRfu() {
-    return cardRfu.clone();
-  }
-
-  /**
-   * Gets the ECC public key from recoverable data.
-   *
-   * @return A copy of the ECC public key (64 bytes).
-   * @since 0.1.0
-   */
-  byte[] getEccPublicKey() {
-    return eccPublicKey.clone();
-  }
-
-  /**
-   * Gets the ECC RFU from recoverable data.
-   *
-   * @return A copy of the ECC RFU (124 bytes).
-   * @since 0.1.0
-   */
-  byte[] getEccRfu() {
-    return eccRfu.clone();
   }
 
   /**
@@ -294,31 +152,6 @@ final class CardCertificate {
   }
 
   /**
-   * Serializes the complete certificate to bytes (with signature).
-   *
-   * <p>This represents the full 316-byte Card certificate according to the Calypso Prime Legacy
-   * specification.
-   *
-   * @return A 316-byte array containing the complete certificate.
-   * @since 0.1.0
-   */
-  byte[] toBytes() {
-    byte[] serialized = new byte[CertificateConstants.CARD_CERTIFICATE_SIZE];
-    int offset = 0;
-
-    // Copy the non-recoverable data (60 bytes)
-    byte[] dataForSigning = toBytesForSigning();
-    System.arraycopy(
-        dataForSigning, 0, serialized, offset, CertificateConstants.CARD_NON_RECOVERABLE_DATA_SIZE);
-    offset += CertificateConstants.CARD_NON_RECOVERABLE_DATA_SIZE;
-
-    // KCertSignature (256 bytes)
-    System.arraycopy(signature, 0, serialized, offset, CertificateConstants.RSA_SIGNATURE_SIZE);
-
-    return serialized;
-  }
-
-  /**
    * Creates a new builder instance.
    *
    * @return A new builder.
@@ -340,7 +173,6 @@ final class CardCertificate {
     private Aid cardAid;
     private byte[] cardSerialNumber;
     private byte[] cardIndex;
-    private byte[] signature;
     private LocalDate startDate;
     private LocalDate endDate;
     private byte cardRights;
@@ -388,14 +220,6 @@ final class CardCertificate {
           .notNull(cardIndex, "cardIndex")
           .isEqual(cardIndex.length, CertificateConstants.CARD_INDEX_SIZE, "cardIndex.length");
       this.cardIndex = cardIndex.clone();
-      return this;
-    }
-
-    Builder signature(byte[] signature) {
-      Assert.getInstance()
-          .notNull(signature, "signature")
-          .isEqual(signature.length, CertificateConstants.RSA_SIGNATURE_SIZE, "signature.length");
-      this.signature = signature.clone();
       return this;
     }
 
@@ -448,7 +272,7 @@ final class CardCertificate {
     }
 
     CardCertificate build() {
-      // Validate required fields (startDate, endDate, and cardSerialNumber are optional)
+      // Validate required fields
       Assert.getInstance()
           .notNull(certType, "certType")
           .notNull(issuerKeyReference, "issuerKeyReference")

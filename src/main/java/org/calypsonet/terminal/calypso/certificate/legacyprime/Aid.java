@@ -25,7 +25,8 @@ package org.calypsonet.terminal.calypso.certificate.legacyprime;
  * @since 0.1.0
  */
 final class Aid {
-  static final byte AID_SIZE_RFU = (byte) 0xFF;
+
+  private static final byte AID_SIZE_RFU = (byte) 0xFF;
 
   private final byte size;
   private final byte[] value;
@@ -86,7 +87,7 @@ final class Aid {
    * @since 0.1.0
    */
   boolean isRfu() {
-    return size == (byte) 0xFF;
+    return size == AID_SIZE_RFU;
   }
 
   /**
@@ -114,7 +115,6 @@ final class Aid {
           return false;
         }
       }
-      return true;
     } else {
       // Truncation forbidden: exact match required (same size and same value bytes)
       if (this.size != issuerAid.size) {
@@ -125,8 +125,8 @@ final class Aid {
           return false;
         }
       }
-      return true;
     }
+    return true;
   }
 
   /**

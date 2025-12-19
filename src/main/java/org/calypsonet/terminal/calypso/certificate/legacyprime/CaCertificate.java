@@ -335,6 +335,38 @@ final class CaCertificate {
   }
 
   /**
+   * Extracts the public key header from the modulus of the CA public key and sets it within the
+   * certificate builder. Additionally, builds and returns the recoverable data from the modulus.
+   *
+   * <p>The public key header consists of the first 34 bytes of the RSA modulus, while the
+   * recoverable data comprises the subsequent 222 bytes. If the modulus is 257 bytes long and
+   * starts with a leading zero (due to encoding), this leading zero is excluded in the extraction
+   * process.
+   *
+   * @return A byte array containing the recoverable data extracted from the modulus, which is 222
+   *     bytes in length.
+   */
+  byte[] getRecoverableDataForSigning() {
+
+    // Extract the public key header (first 34 bytes of RSA modulus)
+    byte[] modulus = rsaPublicKey.getModulus().toByteArray();
+
+    // Handle potential leading zero byte in modulus
+    int srcPos = (modulus.length == 257 && modulus[0] == 0) ? 1 : 0;
+
+    // extract recoverable data (last 222 bytes of RSA modulus)
+    byte[] recoverableData = new byte[CertificateConstants.RECOVERABLE_DATA_SIZE];
+    System.arraycopy(
+        modulus,
+        srcPos + CertificateConstants.PUBLIC_KEY_HEADER_SIZE,
+        recoverableData,
+        0,
+        CertificateConstants.PUBLIC_KEY_HEADER_SIZE);
+
+    return recoverableData;
+  }
+
+  /**
    * Serializes the certificate fields to bytes (without signature).
    *
    * <p>This represents the data that must be signed according to the Calypso Prime Legacy
@@ -403,31 +435,6 @@ final class CaCertificate {
     System.arraycopy(publicKeyHeader, 0, data, offset, CertificateConstants.PUBLIC_KEY_HEADER_SIZE);
 
     return data;
-  }
-
-  /**
-   * Serializes the complete certificate to bytes (with signature).
-   *
-   * <p>This represents the full 384-byte CA certificate according to the Calypso Prime Legacy
-   * specification.
-   *
-   * @return A 384-byte array containing the complete certificate.
-   * @since 0.1.0
-   */
-  byte[] toBytes() {
-    byte[] serialized = new byte[CertificateConstants.CA_CERTIFICATE_SIZE];
-    int offset = 0;
-
-    // Copy the data to be signed (128 bytes)
-    byte[] dataForSigning = toBytesForSigning();
-    System.arraycopy(
-        dataForSigning, 0, serialized, offset, CertificateConstants.CA_DATA_FOR_SIGNING_SIZE);
-    offset += CertificateConstants.CA_DATA_FOR_SIGNING_SIZE;
-
-    // KCertSignature (256 bytes)
-    System.arraycopy(signature, 0, serialized, offset, CertificateConstants.RSA_SIGNATURE_SIZE);
-
-    return serialized;
   }
 
   /**
@@ -656,6 +663,21 @@ final class CaCertificate {
     }
 
     CaCertificate build() {
+      // Validate required fields
+      Assert.getInstance()
+          .notNull(certType, "certType")
+          .notNull(issuerKeyReference, "issuerKeyReference")
+          .notNull(caTargetKeyReference, "caTargetKeyReference")
+          .notNull(startDate, "startDate")
+          .notNull(caRfu1, "caRfu1")
+          .notNull(caRights, "caRights")
+          .notNull(caScope, "caScope")
+          .notNull(endDate, "endDate")
+          .notNull(caTargetAid, "caTargetAid")
+          .notNull(caOperatingMode, "caOperatingMode")
+          .notNull(caRfu2, "caRfu2")
+          .notNull(publicKeyHeader, "publicKeyHeader");
+
       return new CaCertificate(this);
     }
   }

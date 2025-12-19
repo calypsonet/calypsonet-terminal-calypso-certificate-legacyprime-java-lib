@@ -29,7 +29,6 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
 
   private final CalypsoCertificateLegacyPrimeStoreAdapter store;
   private final CalypsoCertificateLegacyPrimeSigner signer;
-  private RSAPublicKey caPublicKey;
   private final CaCertificate issuerCaCertificate;
   private final CaCertificate.Builder certificateBuilder;
 
@@ -122,8 +121,19 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
     if (issuerCaCertificate != null) {
       validateAidAgainstIssuerConstraints(caPublicKeyReference, issuerCaCertificate);
     }
-    this.caPublicKey = caPublicKey;
+    certificateBuilder.publicKeyHeader(extractPublicKeyHeader(caPublicKey));
     return this;
+  }
+
+  private static byte[] extractPublicKeyHeader(RSAPublicKey caPublicKey) {
+    byte[] publicKeyHeader = new byte[CertificateConstants.PUBLIC_KEY_HEADER_SIZE];
+    // Extract the public key header (first 34 bytes of RSA modulus)
+    byte[] modulus = caPublicKey.getModulus().toByteArray();
+    // Handle potential leading zero byte in modulus
+    int srcPos = (modulus.length == 257 && modulus[0] == 0) ? 1 : 0;
+    System.arraycopy(
+        modulus, srcPos, publicKeyHeader, 0, CertificateConstants.PUBLIC_KEY_HEADER_SIZE);
+    return publicKeyHeader;
   }
 
   /**
@@ -210,9 +220,7 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
   @Override
   public byte[] generate() {
     // Validate required parameters
-    if (caPublicKey == null) {
-      throw new IllegalStateException("CA public key must be set");
-    }
+    CaCertificate caCertificate = certificateBuilder.build();
 
     // Validate time checks
     if (issuerCaCertificate != null) {
@@ -228,68 +236,13 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
       }
     }
 
-    // Set the public key header into the builder and build recoverable data
-    byte[] recoverableData = setPublicKeyHeaderAndBuildRecoverableData();
-
     // Build certificate bytes for signing (128 bytes from KCertType to KCertPublicKeyHeader)
-    byte[] dataToSign = certificateBuilder.build().toBytesForSigning();
+    byte[] dataToSign = caCertificate.toBytesForSigning();
 
-    // Sign the data using the signer (no recoverable data for CA certificates)
-    byte[] signedCertificate = signer.generateSignedCertificate(dataToSign, recoverableData);
+    // Set the public key header into the builder and build recoverable data
+    byte[] recoverableData = caCertificate.getRecoverableDataForSigning();
 
-    // Extract signature from a signed certificate (last 256 bytes)
-    if (signedCertificate.length != dataToSign.length + CertificateConstants.RSA_SIGNATURE_SIZE) {
-      throw new CertificateSigningException(
-          "Signed certificate must be "
-              + (dataToSign.length + CertificateConstants.RSA_SIGNATURE_SIZE)
-              + " bytes, got "
-              + signedCertificate.length
-              + " bytes");
-    }
-
-    // Check if something was altered during signing
-    for (int i = 0; i < dataToSign.length; i++) {
-      if (dataToSign[i] != signedCertificate[i]) {
-        throw new CertificateSigningException("Certificate signing failed");
-      }
-    }
-
-    return signedCertificate;
-  }
-
-  /**
-   * Extracts the public key header from the modulus of the CA public key and sets it within the
-   * certificate builder. Additionally, builds and returns the recoverable data from the modulus.
-   *
-   * <p>The public key header consists of the first 34 bytes of the RSA modulus, while the
-   * recoverable data comprises the subsequent 222 bytes. If the modulus is 257 bytes long and
-   * starts with a leading zero (due to encoding), this leading zero is excluded in the extraction
-   * process.
-   *
-   * @return A byte array containing the recoverable data extracted from the modulus, which is 222
-   *     bytes in length.
-   */
-  private byte[] setPublicKeyHeaderAndBuildRecoverableData() {
-
-    // Extract the public key header (first 34 bytes of RSA modulus)
-    byte[] modulus = caPublicKey.getModulus().toByteArray();
-    byte[] publicKeyHeader = new byte[CertificateConstants.PUBLIC_KEY_HEADER_SIZE];
-
-    // Handle potential leading zero byte in modulus
-    int srcPos = (modulus.length == 257 && modulus[0] == 0) ? 1 : 0;
-    System.arraycopy(
-        modulus, srcPos, publicKeyHeader, 0, CertificateConstants.PUBLIC_KEY_HEADER_SIZE);
-
-    certificateBuilder.publicKeyHeader(publicKeyHeader);
-
-    // extract recoverable data (last 222 bytes of RSA modulus)
-    byte[] recoverableData = new byte[CertificateConstants.RECOVERABLE_DATA_SIZE];
-    System.arraycopy(
-        modulus,
-        srcPos + CertificateConstants.PUBLIC_KEY_HEADER_SIZE,
-        recoverableData,
-        0,
-        CertificateConstants.PUBLIC_KEY_HEADER_SIZE);
-    return recoverableData;
+    // Generate the signed certificate
+    return CertificateUtils.generateSignedCertificate(dataToSign, recoverableData, signer);
   }
 }

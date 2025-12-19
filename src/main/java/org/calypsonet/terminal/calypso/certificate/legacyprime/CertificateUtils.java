@@ -18,6 +18,7 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.RSAPublicKeySpec;
 import java.time.LocalDate;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.calypsonet.terminal.calypso.certificate.legacyprime.spi.CalypsoCertificateLegacyPrimeSigner;
 import org.eclipse.keyple.core.util.Assert;
 
 /**
@@ -139,5 +140,46 @@ final class CertificateUtils {
     int day = ((bcdDate[3] >> 4) & 0x0F) * 10 + (bcdDate[3] & 0x0F);
 
     return LocalDate.of(year, month, day);
+  }
+
+  /**
+   * Generates a signed certificate by appending a cryptographic signature to the provided data,
+   * ensuring its integrity and authenticity.
+   *
+   * @param dataToSign The byte array containing the data to be signed and included in the final
+   *     certificate.
+   * @param recoverableData The byte array containing recoverable data used during the signature
+   *     generation process.
+   * @param signer An instance of {@link CalypsoCertificateLegacyPrimeSigner} responsible for
+   *     generating the signature.
+   * @return A byte array representing the signed certificate, which includes the original data
+   *     concatenated with the signature.
+   * @throws CertificateSigningException If an error occurs during the signing process, such as an
+   *     invalid certificate size or data alteration during signing.
+   */
+  static byte[] generateSignedCertificate(
+      byte[] dataToSign, byte[] recoverableData, CalypsoCertificateLegacyPrimeSigner signer) {
+
+    // Sign using ISO9796-2 with recoverable data
+    byte[] signedCertificate = signer.generateSignedCertificate(dataToSign, recoverableData);
+
+    // Extract signature from a signed certificate (last 256 bytes)
+    if (signedCertificate.length != dataToSign.length + CertificateConstants.RSA_SIGNATURE_SIZE) {
+      throw new CertificateSigningException(
+          "Signed certificate must be "
+              + (dataToSign.length + CertificateConstants.RSA_SIGNATURE_SIZE)
+              + " bytes, got "
+              + signedCertificate.length
+              + " bytes");
+    }
+
+    // Check if something was altered during signing
+    for (int i = 0; i < dataToSign.length; i++) {
+      if (dataToSign[i] != signedCertificate[i]) {
+        throw new CertificateSigningException("Certificate signing failed");
+      }
+    }
+
+    return signedCertificate;
   }
 }

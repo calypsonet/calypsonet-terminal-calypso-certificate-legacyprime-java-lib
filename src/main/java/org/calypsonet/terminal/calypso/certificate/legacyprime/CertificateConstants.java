@@ -40,9 +40,6 @@ final class CertificateConstants {
   /** Total size of a CA certificate in bytes (384). */
   static final int CA_CERTIFICATE_SIZE = 384;
 
-  /** Total size of a Card certificate in bytes (316). */
-  static final int CARD_CERTIFICATE_SIZE = 316;
-
   /** Size of data to be signed for CA certificates in bytes (128). */
   static final int CA_DATA_FOR_SIGNING_SIZE = 128;
 
@@ -69,14 +66,8 @@ final class CertificateConstants {
   /** Public key header size in bytes (34). */
   static final int PUBLIC_KEY_HEADER_SIZE = 34;
 
-  /** Size of modulus bytes encoded in signature (222). */
-  static final int RSA_MODULUS_IN_SIGNATURE_SIZE = 222;
-
   /** Key algorithm name for RSA. */
   static final String KEY_ALGORITHM_RSA = "RSA";
-
-  /** RSA transformation string for raw RSA operations. */
-  static final String RSA_TRANSFORMATION = "RSA/ECB/NoPadding";
 
   // ==================== ECC Cryptography ====================
 
@@ -126,11 +117,6 @@ final class CertificateConstants {
   /** Maximum AID length in bytes (16). */
   static final int AID_MAX_LENGTH = 16;
 
-  // ==================== Certificate Rights ====================
-
-  /** Certificate right: reserved for future use (0b11). */
-  static final int CERT_RIGHT_RFU = 0x03;
-
   // ==================== Bit Masks and Shifts ====================
 
   /** Bit mask for high nibble, bits 7-4 (0xF0). */
@@ -141,20 +127,6 @@ final class CertificateConstants {
 
   /** Bit shift for card certificate rights in CA rights byte (2 bits). */
   static final int SHIFT_CARD_CERT_RIGHT = 2;
-
-  // ==================== Field Offsets in Key Reference (29 bytes) ====================
-
-  /** Offset of AID size in key reference (0). */
-  static final int KEY_REF_OFFSET_AID_SIZE = 0;
-
-  /** Offset of AID value in key reference (1). */
-  static final int KEY_REF_OFFSET_AID_VALUE = 1;
-
-  /** Offset of serial number in key reference (17 = 1 + 16). */
-  static final int KEY_REF_OFFSET_SERIAL_NUMBER = 17;
-
-  /** Offset of key ID in key reference (25 = 1 + 16 + 8). */
-  static final int KEY_REF_OFFSET_KEY_ID = 25;
 
   /**
    * Private constructor to prevent instantiation.
