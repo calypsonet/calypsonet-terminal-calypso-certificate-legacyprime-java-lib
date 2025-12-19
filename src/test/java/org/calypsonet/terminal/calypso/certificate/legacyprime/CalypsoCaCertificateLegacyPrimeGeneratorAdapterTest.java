@@ -380,7 +380,7 @@ class CalypsoCaCertificateLegacyPrimeGeneratorAdapterTest {
         .caRights((byte) 0x01)
         .caScope((byte) 0xFF)
         .endDate(new byte[4])
-        .caTargetAidValue(effectiveTargetAid.getUnpaddedValue())
+        .caTargetAidUnpaddedValue(effectiveTargetAid.getUnpaddedValue())
         .caOperatingMode(operatingMode)
         .caRfu2(new byte[2])
         .publicKeyHeader(new byte[34])

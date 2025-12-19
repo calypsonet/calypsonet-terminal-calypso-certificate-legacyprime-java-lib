@@ -59,7 +59,7 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
             .caRights(CaRights.CA_RIGHTS_NOT_SPECIFIED)
             .caScope(CaScope.NOT_SPECIFIED.getValue())
             .endDate(new byte[CertificateConstants.DATE_SIZE])
-            .caTargetAidValue(new byte[CertificateConstants.AID_VALUE_SIZE])
+            .caTargetAidUnpaddedValue(new byte[CertificateConstants.AID_VALUE_SIZE])
             .caOperatingMode(OperatingMode.TRUNCATION_FORBIDDEN.getValue())
             .caRfu2(new byte[CertificateConstants.CA_RFU2_SIZE]);
   }
@@ -164,7 +164,7 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
   @Override
   public CalypsoCaCertificateLegacyPrimeGenerator withTargetAid(byte[] aid, boolean isTruncated) {
     certificateBuilder
-        .caTargetAidValue(aid)
+        .caTargetAidUnpaddedValue(aid)
         .caOperatingMode(
             isTruncated
                 ? OperatingMode.TRUNCATION_ALLOWED.getValue()

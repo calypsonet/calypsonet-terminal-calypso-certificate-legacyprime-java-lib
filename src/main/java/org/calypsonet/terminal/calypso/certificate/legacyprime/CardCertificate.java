@@ -34,7 +34,7 @@ final class CardCertificate {
   // Recoverable data from signature
   private final LocalDate startDate;
   private final LocalDate endDate;
-  private final CardRights cardRights;
+  private final byte cardRights;
   private final byte[] cardInfo;
   private final byte[] cardRfu;
   private final byte[] eccPublicKey;
@@ -86,61 +86,11 @@ final class CardCertificate {
   /**
    * Gets the issuer key reference.
    *
-   * @return A copy of the issuer key reference (29 bytes).
-   * @since 0.1.0
-   */
-  byte[] getIssuerKeyReference() {
-    return issuerKeyReference.toBytes();
-  }
-
-  /**
-   * Gets the issuer key reference as an object.
-   *
    * @return The issuer key reference.
    * @since 0.1.0
    */
-  KeyReference getIssuerKeyReferenceObject() {
+  KeyReference getIssuerKeyReference() {
     return issuerKeyReference;
-  }
-
-  /**
-   * Gets the issuer AID size from the issuer key reference.
-   *
-   * @return The issuer AID size (5-16).
-   * @since 0.1.0
-   */
-  byte getIssuerAidSize() {
-    return issuerKeyReference.getAidSize();
-  }
-
-  /**
-   * Gets the issuer AID value from the issuer key reference.
-   *
-   * @return A copy of the issuer AID value (16 bytes, padded).
-   * @since 0.1.0
-   */
-  byte[] getIssuerAidValue() {
-    return issuerKeyReference.getAidValue();
-  }
-
-  /**
-   * Gets the issuer serial number from the issuer key reference.
-   *
-   * @return A copy of the issuer serial number (8 bytes).
-   * @since 0.1.0
-   */
-  byte[] getIssuerSerialNumber() {
-    return issuerKeyReference.getSerialNumber();
-  }
-
-  /**
-   * Gets the issuer key ID from the issuer key reference.
-   *
-   * @return A copy of the issuer key ID (4 bytes).
-   * @since 0.1.0
-   */
-  byte[] getIssuerKeyId() {
-    return issuerKeyReference.getKeyId();
   }
 
   /**
@@ -206,10 +156,10 @@ final class CardCertificate {
   /**
    * Retrieves the card rights associated with this certificate.
    *
-   * @return The card rights object representing the permissions.
+   * @return The card rights representing the permissions.
    * @since 0.1.0
    */
-  CardRights getCardRights() {
+  byte getCardRights() {
     return cardRights;
   }
 
@@ -267,30 +217,24 @@ final class CardCertificate {
     int offset = 0;
 
     // KCertStartDate (4 bytes)
-    if (startDate != null) {
-      byte[] encodedStartDate =
-          CertificateUtils.encodeDateBcd(
-              startDate.getYear(), startDate.getMonthValue(), startDate.getDayOfMonth());
-      System.arraycopy(encodedStartDate, 0, data, offset, CertificateConstants.DATE_SIZE);
-    }
+    byte[] encodedStartDate =
+        CertificateUtils.encodeDateBcd(
+            startDate.getYear(), startDate.getMonthValue(), startDate.getDayOfMonth());
+    System.arraycopy(encodedStartDate, 0, data, offset, CertificateConstants.DATE_SIZE);
     offset += CertificateConstants.DATE_SIZE;
 
     // KCertEndDate (4 bytes)
-    if (endDate != null) {
-      byte[] encodedEndDate =
-          CertificateUtils.encodeDateBcd(
-              endDate.getYear(), endDate.getMonthValue(), endDate.getDayOfMonth());
-      System.arraycopy(encodedEndDate, 0, data, offset, CertificateConstants.DATE_SIZE);
-    }
+    byte[] encodedEndDate =
+        CertificateUtils.encodeDateBcd(
+            endDate.getYear(), endDate.getMonthValue(), endDate.getDayOfMonth());
+    System.arraycopy(encodedEndDate, 0, data, offset, CertificateConstants.DATE_SIZE);
     offset += CertificateConstants.DATE_SIZE;
 
     // KCertCardRights (1 byte)
-    data[offset++] = cardRights.toByte();
+    data[offset++] = cardRights;
 
     // KCertCardInfo (7 bytes)
-    if (cardInfo != null) {
-      System.arraycopy(cardInfo, 0, data, offset, CertificateConstants.CARD_STARTUP_INFO_SIZE);
-    }
+    System.arraycopy(cardInfo, 0, data, offset, CertificateConstants.CARD_STARTUP_INFO_SIZE);
     offset += CertificateConstants.CARD_STARTUP_INFO_SIZE;
 
     // KCertCardRfu (18 bytes)
@@ -298,9 +242,7 @@ final class CardCertificate {
     offset += CertificateConstants.CARD_RFU_SIZE;
 
     // KCertEccPublicKey (64 bytes)
-    if (eccPublicKey != null) {
-      System.arraycopy(eccPublicKey, 0, data, offset, CertificateConstants.ECC_PUBLIC_KEY_SIZE);
-    }
+    System.arraycopy(eccPublicKey, 0, data, offset, CertificateConstants.ECC_PUBLIC_KEY_SIZE);
     offset += CertificateConstants.ECC_PUBLIC_KEY_SIZE;
 
     // KCertEccRfu (124 bytes)
@@ -342,9 +284,7 @@ final class CardCertificate {
     offset += CertificateConstants.AID_VALUE_SIZE;
 
     // KCertCardSerialNumber (8 bytes)
-    if (cardSerialNumber != null) {
-      System.arraycopy(cardSerialNumber, 0, data, offset, CertificateConstants.SERIAL_NUMBER_SIZE);
-    }
+    System.arraycopy(cardSerialNumber, 0, data, offset, CertificateConstants.SERIAL_NUMBER_SIZE);
     offset += CertificateConstants.SERIAL_NUMBER_SIZE;
 
     // KCertCardIndex (4 bytes)
@@ -403,19 +343,13 @@ final class CardCertificate {
     private byte[] signature;
     private LocalDate startDate;
     private LocalDate endDate;
-    private CardRights cardRights;
+    private byte cardRights;
     private byte[] cardInfo;
     private byte[] cardRfu;
     private byte[] eccPublicKey;
     private byte[] eccRfu;
 
     private Builder() {}
-
-    Builder certType(CertificateType certType) {
-      Assert.getInstance().notNull(certType, "certType");
-      this.certType = certType;
-      return this;
-    }
 
     Builder certType(byte certType) {
       this.certType = CertificateType.fromByte(certType);
@@ -427,49 +361,25 @@ final class CardCertificate {
       return this;
     }
 
-    Builder issuerKeyReference(KeyReference issuerKeyReference) {
-      Assert.getInstance().notNull(issuerKeyReference, "issuerKeyReference");
-      this.issuerKeyReference = issuerKeyReference;
-      return this;
-    }
-
     Builder issuerKeyReference(byte[] issuerKeyReference) {
-      Assert.getInstance().notNull(issuerKeyReference, "issuerKeyReference");
-
-      // If the reference is shorter than 29 bytes, it's a short reference
-      // We need to pad it to create a full KeyReference
-      if (issuerKeyReference.length < CertificateConstants.KEY_REFERENCE_SIZE) {
-        byte[] paddedReference = new byte[CertificateConstants.KEY_REFERENCE_SIZE];
-        System.arraycopy(issuerKeyReference, 0, paddedReference, 0, issuerKeyReference.length);
-        this.issuerKeyReference = KeyReference.fromBytes(paddedReference);
-      } else {
-        Assert.getInstance()
-            .isEqual(
-                issuerKeyReference.length,
-                CertificateConstants.KEY_REFERENCE_SIZE,
-                "issuerKeyReference.length");
-        this.issuerKeyReference = KeyReference.fromBytes(issuerKeyReference);
-      }
+      this.issuerKeyReference = KeyReference.fromBytes(issuerKeyReference);
       return this;
     }
 
-    Builder cardAid(Aid cardAid) {
-      Assert.getInstance().notNull(cardAid, "cardAid");
-      this.cardAid = cardAid;
+    Builder cardAidUnpaddedValue(byte[] cardAidAidUnpaddedValue) {
+      this.cardAid = Aid.fromUnpaddedValue(cardAidAidUnpaddedValue);
+      Assert.getInstance().isTrue(!cardAid.isRfu(), "cardAid must be defined");
       return this;
     }
 
     Builder cardSerialNumber(byte[] cardSerialNumber) {
-      if (cardSerialNumber != null) {
-        Assert.getInstance()
-            .isEqual(
-                cardSerialNumber.length,
-                CertificateConstants.SERIAL_NUMBER_SIZE,
-                "cardSerialNumber.length");
-        this.cardSerialNumber = cardSerialNumber.clone();
-      } else {
-        this.cardSerialNumber = null;
-      }
+      Assert.getInstance()
+          .notNull(cardSerialNumber, "cardSerialNumber")
+          .isEqual(
+              cardSerialNumber.length,
+              CertificateConstants.SERIAL_NUMBER_SIZE,
+              "cardSerialNumber.length");
+      this.cardSerialNumber = cardSerialNumber.clone();
       return this;
     }
 
@@ -489,46 +399,18 @@ final class CardCertificate {
       return this;
     }
 
-    Builder startDate(LocalDate startDate) {
-      this.startDate = startDate;
-      return this;
-    }
-
     Builder startDate(byte[] startDate) {
-      if (startDate != null) {
-        Assert.getInstance()
-            .isEqual(startDate.length, CertificateConstants.DATE_SIZE, "startDate.length");
-        this.startDate = CertificateUtils.decodeDateBcd(startDate);
-      } else {
-        this.startDate = null;
-      }
-      return this;
-    }
-
-    Builder endDate(LocalDate endDate) {
-      this.endDate = endDate;
+      this.startDate = CertificateUtils.decodeDateBcd(startDate);
       return this;
     }
 
     Builder endDate(byte[] endDate) {
-      if (endDate != null) {
-        Assert.getInstance()
-            .isEqual(endDate.length, CertificateConstants.DATE_SIZE, "endDate.length");
-        this.endDate = CertificateUtils.decodeDateBcd(endDate);
-      } else {
-        this.endDate = null;
-      }
-      return this;
-    }
-
-    Builder cardRights(CardRights cardRights) {
-      Assert.getInstance().notNull(cardRights, "cardRights");
-      this.cardRights = cardRights;
+      this.endDate = CertificateUtils.decodeDateBcd(endDate);
       return this;
     }
 
     Builder cardRights(byte cardRights) {
-      this.cardRights = CardRights.fromByte(cardRights);
+      this.cardRights = cardRights;
       return this;
     }
 
@@ -571,9 +453,10 @@ final class CardCertificate {
           .notNull(certType, "certType")
           .notNull(issuerKeyReference, "issuerKeyReference")
           .notNull(cardAid, "cardAid")
+          .notNull(cardSerialNumber, "cardSerialNumber")
           .notNull(cardIndex, "cardIndex")
-          .notNull(signature, "signature")
-          .notNull(cardRights, "cardRights")
+          .notNull(startDate, "startDate")
+          .notNull(endDate, "endDate")
           .notNull(cardInfo, "cardInfo")
           .notNull(cardRfu, "cardRfu")
           .notNull(eccPublicKey, "eccPublicKey")
