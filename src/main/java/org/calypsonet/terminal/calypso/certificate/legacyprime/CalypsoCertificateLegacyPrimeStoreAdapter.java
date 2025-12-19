@@ -123,7 +123,7 @@ final class CalypsoCertificateLegacyPrimeStoreAdapter
       throw new IllegalArgumentException(
           "Invalid certificate type: expected CA (0x90), got " + certificate.getCertType());
     }
-    if (certificate.getStructureVersion() != CertificateConstants.STRUCTURE_VERSION) {
+    if (certificate.getStructureVersion() != CertificateConstants.STRUCTURE_VERSION_01) {
       throw new IllegalArgumentException(
           "Invalid certificate version: expected 0x01, got "
               + HexUtil.toHex(certificate.getStructureVersion()));

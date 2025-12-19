@@ -33,7 +33,7 @@ final class CertificateConstants {
   // ==================== Structure Versions ====================
 
   /** Certificate structure version (0x01). */
-  static final byte STRUCTURE_VERSION = (byte) 0x01;
+  static final byte STRUCTURE_VERSION_01 = (byte) 0x01;
 
   // ==================== Certificate Sizes (bytes) ====================
 

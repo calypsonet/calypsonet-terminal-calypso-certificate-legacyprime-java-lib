@@ -52,7 +52,7 @@ final class CalypsoCaCertificateLegacyPrimeGeneratorAdapter
     this.certificateBuilder =
         CaCertificate.builder()
             .certType(CertificateConstants.CERT_TYPE_CA)
-            .structureVersion(CertificateConstants.STRUCTURE_VERSION)
+            .structureVersion(CertificateConstants.STRUCTURE_VERSION_01)
             .issuerKeyReference(issuerPublicKeyReference)
             .startDate(new byte[CertificateConstants.DATE_SIZE])
             .caRfu1(new byte[CertificateConstants.CA_RFU1_SIZE])

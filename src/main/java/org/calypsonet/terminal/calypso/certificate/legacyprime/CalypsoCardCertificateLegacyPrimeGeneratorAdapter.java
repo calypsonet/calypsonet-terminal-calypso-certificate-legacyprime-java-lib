@@ -57,7 +57,7 @@ final class CalypsoCardCertificateLegacyPrimeGeneratorAdapter
     this.certificateBuilder =
         CardCertificate.builder()
             .certType(CertificateConstants.CERT_TYPE_CARD)
-            .structureVersion(CertificateConstants.STRUCTURE_VERSION)
+            .structureVersion(CertificateConstants.STRUCTURE_VERSION_01)
             .issuerKeyReference(issuerPublicKeyReference)
             .cardIndex(new byte[CertificateConstants.CARD_INDEX_SIZE]); // Default index = 0
   }
