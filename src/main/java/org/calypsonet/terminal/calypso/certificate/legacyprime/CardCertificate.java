@@ -12,17 +12,19 @@
 package org.calypsonet.terminal.calypso.certificate.legacyprime;
 
 import java.time.LocalDate;
+import org.eclipse.keyple.core.util.Assert;
 
 /**
  * Internal class representing a Card Certificate with all its fields.
  *
  * <p>This class stores all fields from a 316-byte Card certificate according to the Calypso Prime
- * Legacy specification.
+ * Legacy specification. It follows an auto-contained pattern with strong object-oriented
+ * encapsulation.
  *
  * @since 0.1.0
  */
 final class CardCertificate {
-  private final byte certType;
+  private final CertificateType certType;
   private final byte structureVersion;
   private final KeyReference issuerKeyReference;
   private final Aid cardAid;
@@ -32,7 +34,7 @@ final class CardCertificate {
   // Recoverable data from signature
   private final LocalDate startDate;
   private final LocalDate endDate;
-  private final byte cardRights;
+  private final CardRights cardRights;
   private final byte[] cardInfo;
   private final byte[] cardRfu;
   private final byte[] eccPublicKey;
@@ -47,32 +49,27 @@ final class CardCertificate {
   private CardCertificate(Builder builder) {
     this.certType = builder.certType;
     this.structureVersion = builder.structureVersion;
-    this.issuerKeyReference =
-        builder.issuerKeyReference != null
-            ? KeyReference.fromBytes(builder.issuerKeyReference)
-            : null;
+    this.issuerKeyReference = builder.issuerKeyReference;
     this.cardAid = builder.cardAid;
-    this.cardSerialNumber =
-        builder.cardSerialNumber != null ? builder.cardSerialNumber.clone() : null;
-    this.cardIndex = builder.cardIndex != null ? builder.cardIndex.clone() : null;
-    this.signature = builder.signature != null ? builder.signature.clone() : null;
-    this.startDate =
-        builder.startDate != null ? CertificateUtils.decodeDateBcd(builder.startDate) : null;
-    this.endDate = builder.endDate != null ? CertificateUtils.decodeDateBcd(builder.endDate) : null;
+    this.cardSerialNumber = builder.cardSerialNumber;
+    this.cardIndex = builder.cardIndex;
+    this.signature = builder.signature;
+    this.startDate = builder.startDate;
+    this.endDate = builder.endDate;
     this.cardRights = builder.cardRights;
-    this.cardInfo = builder.cardInfo != null ? builder.cardInfo.clone() : null;
-    this.cardRfu = builder.cardRfu != null ? builder.cardRfu.clone() : null;
-    this.eccPublicKey = builder.eccPublicKey != null ? builder.eccPublicKey.clone() : null;
-    this.eccRfu = builder.eccRfu != null ? builder.eccRfu.clone() : null;
+    this.cardInfo = builder.cardInfo;
+    this.cardRfu = builder.cardRfu;
+    this.eccPublicKey = builder.eccPublicKey;
+    this.eccRfu = builder.eccRfu;
   }
 
   /**
-   * Gets the certificate type.
+   * Retrieves the certificate type associated with this Card certificate.
    *
-   * @return The certificate type (0x91).
+   * @return The certificate type as a {@code CertificateType} enum value.
    * @since 0.1.0
    */
-  byte getCertType() {
+  CertificateType getCertType() {
     return certType;
   }
 
@@ -207,12 +204,12 @@ final class CardCertificate {
   }
 
   /**
-   * Gets the card rights from recoverable data.
+   * Retrieves the card rights associated with this certificate.
    *
-   * @return The card rights byte.
+   * @return The card rights object representing the permissions.
    * @since 0.1.0
    */
-  byte getCardRights() {
+  CardRights getCardRights() {
     return cardRights;
   }
 
@@ -257,16 +254,6 @@ final class CardCertificate {
   }
 
   /**
-   * Gets the certificate type as an enum.
-   *
-   * @return The certificate type.
-   * @since 0.1.0
-   */
-  CertificateType getCertificateType() {
-    return CertificateType.fromByte(certType);
-  }
-
-  /**
    * Serializes the recoverable data for ISO9796-2 signature (222 bytes).
    *
    * <p>This represents the data that will be embedded in the signature and can be recovered during
@@ -298,7 +285,7 @@ final class CardCertificate {
     offset += CertificateConstants.DATE_SIZE;
 
     // KCertCardRights (1 byte)
-    data[offset++] = cardRights;
+    data[offset++] = cardRights.toByte();
 
     // KCertCardInfo (7 bytes)
     if (cardInfo != null) {
@@ -336,7 +323,7 @@ final class CardCertificate {
     int offset = 0;
 
     // KCertType (1 byte)
-    data[offset++] = certType;
+    data[offset++] = certType.getValue();
 
     // KCertStructureVersion (1 byte)
     data[offset++] = structureVersion;
@@ -407,16 +394,16 @@ final class CardCertificate {
    * @since 0.1.0
    */
   static final class Builder {
-    private byte certType;
+    private CertificateType certType;
     private byte structureVersion;
-    private byte[] issuerKeyReference;
+    private KeyReference issuerKeyReference;
     private Aid cardAid;
     private byte[] cardSerialNumber;
     private byte[] cardIndex;
     private byte[] signature;
-    private byte[] startDate;
-    private byte[] endDate;
-    private byte cardRights;
+    private LocalDate startDate;
+    private LocalDate endDate;
+    private CardRights cardRights;
     private byte[] cardInfo;
     private byte[] cardRfu;
     private byte[] eccPublicKey;
@@ -424,8 +411,14 @@ final class CardCertificate {
 
     private Builder() {}
 
-    Builder certType(byte certType) {
+    Builder certType(CertificateType certType) {
+      Assert.getInstance().notNull(certType, "certType");
       this.certType = certType;
+      return this;
+    }
+
+    Builder certType(byte certType) {
+      this.certType = CertificateType.fromByte(certType);
       return this;
     }
 
@@ -434,67 +427,158 @@ final class CardCertificate {
       return this;
     }
 
-    Builder issuerKeyReference(byte[] issuerKeyReference) {
+    Builder issuerKeyReference(KeyReference issuerKeyReference) {
+      Assert.getInstance().notNull(issuerKeyReference, "issuerKeyReference");
       this.issuerKeyReference = issuerKeyReference;
       return this;
     }
 
+    Builder issuerKeyReference(byte[] issuerKeyReference) {
+      Assert.getInstance().notNull(issuerKeyReference, "issuerKeyReference");
+
+      // If the reference is shorter than 29 bytes, it's a short reference
+      // We need to pad it to create a full KeyReference
+      if (issuerKeyReference.length < CertificateConstants.KEY_REFERENCE_SIZE) {
+        byte[] paddedReference = new byte[CertificateConstants.KEY_REFERENCE_SIZE];
+        System.arraycopy(issuerKeyReference, 0, paddedReference, 0, issuerKeyReference.length);
+        this.issuerKeyReference = KeyReference.fromBytes(paddedReference);
+      } else {
+        Assert.getInstance()
+            .isEqual(
+                issuerKeyReference.length,
+                CertificateConstants.KEY_REFERENCE_SIZE,
+                "issuerKeyReference.length");
+        this.issuerKeyReference = KeyReference.fromBytes(issuerKeyReference);
+      }
+      return this;
+    }
+
     Builder cardAid(Aid cardAid) {
+      Assert.getInstance().notNull(cardAid, "cardAid");
       this.cardAid = cardAid;
       return this;
     }
 
     Builder cardSerialNumber(byte[] cardSerialNumber) {
-      this.cardSerialNumber = cardSerialNumber;
+      if (cardSerialNumber != null) {
+        Assert.getInstance()
+            .isEqual(
+                cardSerialNumber.length,
+                CertificateConstants.SERIAL_NUMBER_SIZE,
+                "cardSerialNumber.length");
+        this.cardSerialNumber = cardSerialNumber.clone();
+      } else {
+        this.cardSerialNumber = null;
+      }
       return this;
     }
 
     Builder cardIndex(byte[] cardIndex) {
-      this.cardIndex = cardIndex;
+      Assert.getInstance()
+          .notNull(cardIndex, "cardIndex")
+          .isEqual(cardIndex.length, CertificateConstants.CARD_INDEX_SIZE, "cardIndex.length");
+      this.cardIndex = cardIndex.clone();
       return this;
     }
 
     Builder signature(byte[] signature) {
-      this.signature = signature;
+      Assert.getInstance()
+          .notNull(signature, "signature")
+          .isEqual(signature.length, CertificateConstants.RSA_SIGNATURE_SIZE, "signature.length");
+      this.signature = signature.clone();
       return this;
     }
 
-    Builder startDate(byte[] startDate) {
+    Builder startDate(LocalDate startDate) {
       this.startDate = startDate;
       return this;
     }
 
-    Builder endDate(byte[] endDate) {
+    Builder startDate(byte[] startDate) {
+      if (startDate != null) {
+        Assert.getInstance()
+            .isEqual(startDate.length, CertificateConstants.DATE_SIZE, "startDate.length");
+        this.startDate = CertificateUtils.decodeDateBcd(startDate);
+      } else {
+        this.startDate = null;
+      }
+      return this;
+    }
+
+    Builder endDate(LocalDate endDate) {
       this.endDate = endDate;
       return this;
     }
 
-    Builder cardRights(byte cardRights) {
+    Builder endDate(byte[] endDate) {
+      if (endDate != null) {
+        Assert.getInstance()
+            .isEqual(endDate.length, CertificateConstants.DATE_SIZE, "endDate.length");
+        this.endDate = CertificateUtils.decodeDateBcd(endDate);
+      } else {
+        this.endDate = null;
+      }
+      return this;
+    }
+
+    Builder cardRights(CardRights cardRights) {
+      Assert.getInstance().notNull(cardRights, "cardRights");
       this.cardRights = cardRights;
       return this;
     }
 
+    Builder cardRights(byte cardRights) {
+      this.cardRights = CardRights.fromByte(cardRights);
+      return this;
+    }
+
     Builder cardInfo(byte[] cardInfo) {
-      this.cardInfo = cardInfo;
+      Assert.getInstance()
+          .notNull(cardInfo, "cardInfo")
+          .isEqual(cardInfo.length, CertificateConstants.CARD_STARTUP_INFO_SIZE, "cardInfo.length");
+      this.cardInfo = cardInfo.clone();
       return this;
     }
 
     Builder cardRfu(byte[] cardRfu) {
-      this.cardRfu = cardRfu;
+      Assert.getInstance()
+          .notNull(cardRfu, "cardRfu")
+          .isEqual(cardRfu.length, CertificateConstants.CARD_RFU_SIZE, "cardRfu.length");
+      this.cardRfu = cardRfu.clone();
       return this;
     }
 
     Builder eccPublicKey(byte[] eccPublicKey) {
-      this.eccPublicKey = eccPublicKey;
+      Assert.getInstance()
+          .notNull(eccPublicKey, "eccPublicKey")
+          .isEqual(
+              eccPublicKey.length, CertificateConstants.ECC_PUBLIC_KEY_SIZE, "eccPublicKey.length");
+      this.eccPublicKey = eccPublicKey.clone();
       return this;
     }
 
     Builder eccRfu(byte[] eccRfu) {
-      this.eccRfu = eccRfu;
+      Assert.getInstance()
+          .notNull(eccRfu, "eccRfu")
+          .isEqual(eccRfu.length, CertificateConstants.ECC_RFU_SIZE, "eccRfu.length");
+      this.eccRfu = eccRfu.clone();
       return this;
     }
 
     CardCertificate build() {
+      // Validate required fields (startDate, endDate, and cardSerialNumber are optional)
+      Assert.getInstance()
+          .notNull(certType, "certType")
+          .notNull(issuerKeyReference, "issuerKeyReference")
+          .notNull(cardAid, "cardAid")
+          .notNull(cardIndex, "cardIndex")
+          .notNull(signature, "signature")
+          .notNull(cardRights, "cardRights")
+          .notNull(cardInfo, "cardInfo")
+          .notNull(cardRfu, "cardRfu")
+          .notNull(eccPublicKey, "eccPublicKey")
+          .notNull(eccRfu, "eccRfu");
+
       return new CardCertificate(this);
     }
   }

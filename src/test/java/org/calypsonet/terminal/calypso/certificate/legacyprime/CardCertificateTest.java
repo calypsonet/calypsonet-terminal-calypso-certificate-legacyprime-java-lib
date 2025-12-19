@@ -13,6 +13,7 @@ package org.calypsonet.terminal.calypso.certificate.legacyprime;
 
 import static org.assertj.core.api.Assertions.*;
 
+import java.time.LocalDate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -198,7 +199,7 @@ class CardCertificateTest {
             .cardSerialNumber(cardSerialNumber)
             .cardIndex(cardIndex)
             .signature(signature)
-            .startDate(null) // Null start date
+            .startDate((LocalDate) null) // Null start date
             .endDate(endDate)
             .cardRights((byte) 0x0F)
             .cardInfo(cardInfo)
