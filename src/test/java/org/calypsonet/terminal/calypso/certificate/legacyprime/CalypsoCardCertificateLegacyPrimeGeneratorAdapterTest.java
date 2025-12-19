@@ -218,7 +218,7 @@ class CalypsoCardCertificateLegacyPrimeGeneratorAdapterTest {
     // When & Then
     assertThatIllegalArgumentException()
         .isThrownBy(() -> generator.withCardAid(zeroAid))
-        .withMessageContaining("zero");
+        .withMessageContaining("cardAid must be defined");
   }
 
   // Tests for withCardSerialNumber

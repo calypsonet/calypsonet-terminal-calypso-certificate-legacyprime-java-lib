@@ -319,14 +319,16 @@ class AidTest {
   }
 
   @Test
-  void fromUnpaddedValue_whenUnpaddedValueIsAllZeros_shouldThrowIllegalArgumentException() {
+  void fromUnpaddedValue_whenUnpaddedValueIsAllZeros_shouldSetAidSizeToFF() {
     // Given
-    byte[] unpaddedValue = new byte[10]; // All zeros
+    byte[] unpaddedValue = new byte[10]; // All zerosAid
+    Aid aid = Aid.fromUnpaddedValue(unpaddedValue);
 
-    // When & Then
-    assertThatThrownBy(() -> Aid.fromUnpaddedValue(unpaddedValue))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("AID cannot contain only zero bytes");
+    // When
+    byte result = aid.getSize();
+
+    // Then
+    assertThat(result).isEqualTo((byte) 0xFF);
   }
 
   // Tests for getters and serialization

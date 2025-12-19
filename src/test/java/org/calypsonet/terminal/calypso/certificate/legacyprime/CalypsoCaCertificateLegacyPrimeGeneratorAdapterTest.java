@@ -513,17 +513,6 @@ class CalypsoCaCertificateLegacyPrimeGeneratorAdapterTest {
         .withMessageContaining("5 and 16");
   }
 
-  @Test
-  void withTargetAid_whenAidContainsOnlyZeros_shouldThrowIllegalArgumentException() {
-    // Given
-    byte[] zeroAid = new byte[5];
-
-    // When & Then
-    assertThatIllegalArgumentException()
-        .isThrownBy(() -> generator.withTargetAid(zeroAid, false))
-        .withMessageContaining("zero");
-  }
-
   // Tests for withCaRights
 
   @Test

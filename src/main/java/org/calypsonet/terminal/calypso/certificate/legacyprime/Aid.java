@@ -221,6 +221,8 @@ final class Aid {
               + unpaddedValue.length);
     }
 
+    byte aidSize;
+
     // Check if AID contains only zero bytes
     boolean allZeros = true;
     for (byte b : unpaddedValue) {
@@ -230,10 +232,11 @@ final class Aid {
       }
     }
     if (allZeros) {
-      throw new IllegalArgumentException("AID cannot contain only zero bytes");
+      aidSize = AID_SIZE_RFU;
+    } else {
+      aidSize = (byte) unpaddedValue.length;
     }
 
-    byte aidSize = (byte) unpaddedValue.length;
     byte[] paddedValue = new byte[CertificateConstants.AID_VALUE_SIZE];
     System.arraycopy(unpaddedValue, 0, paddedValue, 0, unpaddedValue.length);
     // The remaining bytes are already zero (default initialization)
