@@ -75,17 +75,21 @@ final class CardCertificate {
     int offset = 0;
 
     // KCertStartDate (4 bytes)
-    byte[] encodedStartDate =
-        CertificateUtils.encodeDateBcd(
-            startDate.getYear(), startDate.getMonthValue(), startDate.getDayOfMonth());
-    System.arraycopy(encodedStartDate, 0, data, offset, CertificateConstants.DATE_SIZE);
+    if (startDate != null) {
+      byte[] encodedStartDate =
+          CertificateUtils.encodeDateBcd(
+              startDate.getYear(), startDate.getMonthValue(), startDate.getDayOfMonth());
+      System.arraycopy(encodedStartDate, 0, data, offset, CertificateConstants.DATE_SIZE);
+    }
     offset += CertificateConstants.DATE_SIZE;
 
     // KCertEndDate (4 bytes)
-    byte[] encodedEndDate =
-        CertificateUtils.encodeDateBcd(
-            endDate.getYear(), endDate.getMonthValue(), endDate.getDayOfMonth());
-    System.arraycopy(encodedEndDate, 0, data, offset, CertificateConstants.DATE_SIZE);
+    if (endDate != null) {
+      byte[] encodedEndDate =
+          CertificateUtils.encodeDateBcd(
+              endDate.getYear(), endDate.getMonthValue(), endDate.getDayOfMonth());
+      System.arraycopy(encodedEndDate, 0, data, offset, CertificateConstants.DATE_SIZE);
+    }
     offset += CertificateConstants.DATE_SIZE;
 
     // KCertCardRights (1 byte)
@@ -279,8 +283,6 @@ final class CardCertificate {
           .notNull(cardAid, "cardAid")
           .notNull(cardSerialNumber, "cardSerialNumber")
           .notNull(cardIndex, "cardIndex")
-          .notNull(startDate, "startDate")
-          .notNull(endDate, "endDate")
           .notNull(cardInfo, "cardInfo")
           .notNull(cardRfu, "cardRfu")
           .notNull(eccPublicKey, "eccPublicKey")

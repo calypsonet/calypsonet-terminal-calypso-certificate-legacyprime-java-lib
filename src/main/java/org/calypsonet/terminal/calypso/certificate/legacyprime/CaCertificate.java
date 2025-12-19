@@ -396,10 +396,12 @@ final class CaCertificate {
     offset += CertificateConstants.KEY_REFERENCE_SIZE;
 
     // KCertStartDate (4 bytes)
-    byte[] encodedStartDate =
-        CertificateUtils.encodeDateBcd(
-            startDate.getYear(), startDate.getMonthValue(), startDate.getDayOfMonth());
-    System.arraycopy(encodedStartDate, 0, data, offset, CertificateConstants.DATE_SIZE);
+    if (startDate != null) {
+      byte[] encodedStartDate =
+          CertificateUtils.encodeDateBcd(
+              startDate.getYear(), startDate.getMonthValue(), startDate.getDayOfMonth());
+      System.arraycopy(encodedStartDate, 0, data, offset, CertificateConstants.DATE_SIZE);
+    }
     offset += CertificateConstants.DATE_SIZE;
 
     // KCertCaRfu1 (4 bytes)
@@ -413,10 +415,12 @@ final class CaCertificate {
     data[offset++] = caScope.getValue();
 
     // KCertEndDate (4 bytes)
-    byte[] encodedEndDate =
-        CertificateUtils.encodeDateBcd(
-            endDate.getYear(), endDate.getMonthValue(), endDate.getDayOfMonth());
-    System.arraycopy(encodedEndDate, 0, data, offset, CertificateConstants.DATE_SIZE);
+    if (endDate != null) {
+      byte[] encodedEndDate =
+          CertificateUtils.encodeDateBcd(
+              endDate.getYear(), endDate.getMonthValue(), endDate.getDayOfMonth());
+      System.arraycopy(encodedEndDate, 0, data, offset, CertificateConstants.DATE_SIZE);
+    }
     offset += CertificateConstants.DATE_SIZE;
 
     // AID (17 bytes: 1 byte size + 16 bytes value)
@@ -668,11 +672,9 @@ final class CaCertificate {
           .notNull(certType, "certType")
           .notNull(issuerKeyReference, "issuerKeyReference")
           .notNull(caTargetKeyReference, "caTargetKeyReference")
-          .notNull(startDate, "startDate")
           .notNull(caRfu1, "caRfu1")
           .notNull(caRights, "caRights")
           .notNull(caScope, "caScope")
-          .notNull(endDate, "endDate")
           .notNull(caTargetAid, "caTargetAid")
           .notNull(caOperatingMode, "caOperatingMode")
           .notNull(caRfu2, "caRfu2")

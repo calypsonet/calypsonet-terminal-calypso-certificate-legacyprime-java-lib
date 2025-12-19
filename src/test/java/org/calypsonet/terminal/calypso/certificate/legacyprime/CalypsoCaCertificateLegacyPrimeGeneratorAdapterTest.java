@@ -90,7 +90,7 @@ class CalypsoCaCertificateLegacyPrimeGeneratorAdapterTest {
     // When & Then
     assertThatIllegalArgumentException()
         .isThrownBy(() -> generator.withCaPublicKey(null, validRsaPublicKey))
-        .withMessageContaining("caPublicKeyReference");
+        .withMessageContaining("Key reference");
   }
 
   @Test
@@ -370,17 +370,20 @@ class CalypsoCaCertificateLegacyPrimeGeneratorAdapterTest {
       effectiveTargetAid = Aid.fromBytes((byte) 0xFF, new byte[16]);
     }
 
+    // Use default date 2000-01-01 (0x20000101 in BCD)
+    byte[] defaultDate = new byte[] {0x20, 0x00, 0x01, 0x01};
+
     return CaCertificate.builder()
         .certType((byte) 0x90)
         .structureVersion((byte) 0x01)
         .issuerKeyReference(mockIssuerKeyRef)
         .caTargetKeyReference(issuerPublicKeyReference)
-        .startDate(new byte[4])
+        .startDate(defaultDate)
         .caRfu1(new byte[4])
         .caRights((byte) 0x01)
         .caScope((byte) 0xFF)
-        .endDate(new byte[4])
-        .caTargetAidUnpaddedValue(effectiveTargetAid.getUnpaddedValue())
+        .endDate(defaultDate)
+        .caTargetAid(effectiveTargetAid.getSize(), effectiveTargetAid.getPaddedValue())
         .caOperatingMode(operatingMode)
         .caRfu2(new byte[2])
         .publicKeyHeader(new byte[34])
@@ -485,7 +488,7 @@ class CalypsoCaCertificateLegacyPrimeGeneratorAdapterTest {
     // When & Then
     assertThatIllegalArgumentException()
         .isThrownBy(() -> generator.withTargetAid(null, false))
-        .withMessageContaining("AID size must be between 5 and 16 or FFh (RFU), got 0");
+        .withMessageContaining("AID value cannot be null");
   }
 
   @Test
@@ -611,11 +614,11 @@ class CalypsoCaCertificateLegacyPrimeGeneratorAdapterTest {
   // Tests for generate
 
   @Test
-  void generate_whenCaPublicKeyNotSet_shouldThrowIllegalStateException() {
+  void generate_whenCaPublicKeyNotSet_shouldThrowIllegalArgumentException() {
     // When & Then
-    assertThatIllegalStateException()
+    assertThatIllegalArgumentException()
         .isThrownBy(() -> generator.generate())
-        .withMessageContaining("CA public key must be set");
+        .withMessageContaining("caTargetKeyReference");
   }
 
   @Test

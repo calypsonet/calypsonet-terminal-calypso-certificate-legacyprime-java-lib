@@ -41,7 +41,12 @@ class CalypsoCardCertificateLegacyPrimeGeneratorAdapterTest {
 
     // Create store and add issuer key
     store = new CalypsoCertificateLegacyPrimeStoreAdapter();
-    issuerPublicKeyReference = new byte[] {0x01, 0x02, 0x03};
+    // Create a valid 29-byte key reference
+    issuerPublicKeyReference = new byte[29];
+    issuerPublicKeyReference[0] = 0x0A; // AID size = 10
+    for (int i = 1; i < 29; i++) {
+      issuerPublicKeyReference[i] = (byte) i;
+    }
 
     // Create a valid 2048-bit RSA public key with exponent 65537
     java.security.KeyPairGenerator keyGenTemp = java.security.KeyPairGenerator.getInstance("RSA");
@@ -310,55 +315,55 @@ class CalypsoCardCertificateLegacyPrimeGeneratorAdapterTest {
   // Tests for generate
 
   @Test
-  void generate_whenCardPublicKeyNotSet_shouldThrowIllegalStateException() {
+  void generate_whenCardPublicKeyNotSet_shouldThrowIllegalArgumentException() {
     // Given
     generator.withCardAid(cardAid);
     generator.withCardSerialNumber(cardSerialNumber);
     generator.withCardStartupInfo(cardStartupInfo);
 
     // When & Then
-    assertThatIllegalStateException()
+    assertThatIllegalArgumentException()
         .isThrownBy(() -> generator.generate())
-        .withMessageContaining("Card public key must be set");
+        .withMessageContaining("eccPublicKey");
   }
 
   @Test
-  void generate_whenCardAidNotSet_shouldThrowIllegalStateException() {
+  void generate_whenCardAidNotSet_shouldThrowIllegalArgumentException() {
     // Given
     generator.withCardPublicKey(cardPublicKey);
     generator.withCardSerialNumber(cardSerialNumber);
     generator.withCardStartupInfo(cardStartupInfo);
 
     // When & Then
-    assertThatIllegalStateException()
+    assertThatIllegalArgumentException()
         .isThrownBy(() -> generator.generate())
-        .withMessageContaining("Card AID must be set");
+        .withMessageContaining("cardAid");
   }
 
   @Test
-  void generate_whenCardSerialNumberNotSet_shouldThrowIllegalStateException() {
+  void generate_whenCardSerialNumberNotSet_shouldThrowIllegalArgumentException() {
     // Given
     generator.withCardPublicKey(cardPublicKey);
     generator.withCardAid(cardAid);
     generator.withCardStartupInfo(cardStartupInfo);
 
     // When & Then
-    assertThatIllegalStateException()
+    assertThatIllegalArgumentException()
         .isThrownBy(() -> generator.generate())
-        .withMessageContaining("Card serial number must be set");
+        .withMessageContaining("cardSerialNumber");
   }
 
   @Test
-  void generate_whenCardStartupInfoNotSet_shouldThrowIllegalStateException() {
+  void generate_whenCardStartupInfoNotSet_shouldThrowIllegalArgumentException() {
     // Given
     generator.withCardPublicKey(cardPublicKey);
     generator.withCardAid(cardAid);
     generator.withCardSerialNumber(cardSerialNumber);
 
     // When & Then
-    assertThatIllegalStateException()
+    assertThatIllegalArgumentException()
         .isThrownBy(() -> generator.generate())
-        .withMessageContaining("Card startup info must be set");
+        .withMessageContaining("cardInfo");
   }
 
   @Test

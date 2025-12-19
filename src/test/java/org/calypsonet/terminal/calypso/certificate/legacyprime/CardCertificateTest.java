@@ -13,7 +13,6 @@ package org.calypsonet.terminal.calypso.certificate.legacyprime;
 
 import static org.assertj.core.api.Assertions.*;
 
-import java.time.LocalDate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -104,10 +103,9 @@ class CardCertificateTest {
             .certType((byte) 0x91)
             .structureVersion((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
-            .cardAid(cardAid)
+            .cardAidUnpaddedValue(cardAid.getUnpaddedValue())
             .cardSerialNumber(cardSerialNumber)
             .cardIndex(cardIndex)
-            .signature(signature)
             .startDate(startDate)
             .endDate(endDate)
             .cardRights((byte) 0x0F)
@@ -132,10 +130,9 @@ class CardCertificateTest {
             .certType((byte) 0x91)
             .structureVersion((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
-            .cardAid(cardAid)
+            .cardAidUnpaddedValue(cardAid.getUnpaddedValue())
             .cardSerialNumber(cardSerialNumber)
             .cardIndex(cardIndex)
-            .signature(signature)
             .startDate(startDate)
             .endDate(endDate)
             .cardRights((byte) 0x0F)
@@ -195,11 +192,10 @@ class CardCertificateTest {
             .certType((byte) 0x91)
             .structureVersion((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
-            .cardAid(cardAid)
+            .cardAidUnpaddedValue(cardAid.getUnpaddedValue())
             .cardSerialNumber(cardSerialNumber)
             .cardIndex(cardIndex)
-            .signature(signature)
-            .startDate((LocalDate) null) // Null start date
+            .startDate(new byte[CertificateConstants.DATE_SIZE]) // Null start date
             .endDate(endDate)
             .cardRights((byte) 0x0F)
             .cardInfo(cardInfo)
@@ -229,10 +225,9 @@ class CardCertificateTest {
             .certType((byte) 0x91)
             .structureVersion((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
-            .cardAid(cardAid)
+            .cardAidUnpaddedValue(cardAid.getUnpaddedValue())
             .cardSerialNumber(cardSerialNumber)
             .cardIndex(cardIndex)
-            .signature(signature)
             .startDate(startDate)
             .endDate(endDate)
             .cardRights((byte) 0x0F)
@@ -257,10 +252,9 @@ class CardCertificateTest {
             .certType((byte) 0x91)
             .structureVersion((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
-            .cardAid(cardAid)
+            .cardAidUnpaddedValue(cardAid.getUnpaddedValue())
             .cardSerialNumber(cardSerialNumber)
             .cardIndex(cardIndex)
-            .signature(signature)
             .startDate(startDate)
             .endDate(endDate)
             .cardRights((byte) 0x0F)
@@ -316,10 +310,9 @@ class CardCertificateTest {
             .certType((byte) 0x91)
             .structureVersion((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
-            .cardAid(cardAid)
-            .cardSerialNumber(null) // Null serial number
+            .cardAidUnpaddedValue(cardAid.getUnpaddedValue())
+            .cardSerialNumber(new byte[8]) // Empty serial number
             .cardIndex(cardIndex)
-            .signature(signature)
             .startDate(startDate)
             .endDate(endDate)
             .cardRights((byte) 0x0F)
@@ -339,102 +332,6 @@ class CardCertificateTest {
     }
   }
 
-  // Tests for toBytes()
-
-  @Test
-  void toBytes_shouldReturn316Bytes() {
-    // Given
-    CardCertificate certificate =
-        builder
-            .certType((byte) 0x91)
-            .structureVersion((byte) 0x01)
-            .issuerKeyReference(issuerKeyReference)
-            .cardAid(cardAid)
-            .cardSerialNumber(cardSerialNumber)
-            .cardIndex(cardIndex)
-            .signature(signature)
-            .startDate(startDate)
-            .endDate(endDate)
-            .cardRights((byte) 0x0F)
-            .cardInfo(cardInfo)
-            .cardRfu(cardRfu)
-            .eccPublicKey(eccPublicKey)
-            .eccRfu(eccRfu)
-            .build();
-
-    // When
-    byte[] bytes = certificate.toBytes();
-
-    // Then
-    assertThat(bytes).hasSize(316);
-  }
-
-  @Test
-  void toBytes_shouldContainDataForSigningFollowedBySignature() {
-    // Given
-    CardCertificate certificate =
-        builder
-            .certType((byte) 0x91)
-            .structureVersion((byte) 0x01)
-            .issuerKeyReference(issuerKeyReference)
-            .cardAid(cardAid)
-            .cardSerialNumber(cardSerialNumber)
-            .cardIndex(cardIndex)
-            .signature(signature)
-            .startDate(startDate)
-            .endDate(endDate)
-            .cardRights((byte) 0x0F)
-            .cardInfo(cardInfo)
-            .cardRfu(cardRfu)
-            .eccPublicKey(eccPublicKey)
-            .eccRfu(eccRfu)
-            .build();
-
-    // When
-    byte[] bytes = certificate.toBytes();
-    byte[] dataForSigning = certificate.toBytesForSigning();
-
-    // Then
-    // First 60 bytes should match toBytesForSigning()
-    for (int i = 0; i < 60; i++) {
-      assertThat(bytes[i]).isEqualTo(dataForSigning[i]);
-    }
-
-    // Last 256 bytes should be the signature
-    for (int i = 0; i < 256; i++) {
-      assertThat(bytes[60 + i]).isEqualTo(signature[i]);
-    }
-  }
-
-  @Test
-  void toBytes_shouldBeIdempotent() {
-    // Given
-    CardCertificate certificate =
-        builder
-            .certType((byte) 0x91)
-            .structureVersion((byte) 0x01)
-            .issuerKeyReference(issuerKeyReference)
-            .cardAid(cardAid)
-            .cardSerialNumber(cardSerialNumber)
-            .cardIndex(cardIndex)
-            .signature(signature)
-            .startDate(startDate)
-            .endDate(endDate)
-            .cardRights((byte) 0x0F)
-            .cardInfo(cardInfo)
-            .cardRfu(cardRfu)
-            .eccPublicKey(eccPublicKey)
-            .eccRfu(eccRfu)
-            .build();
-
-    // When
-    byte[] bytes1 = certificate.toBytes();
-    byte[] bytes2 = certificate.toBytes();
-
-    // Then
-    assertThat(bytes1).isEqualTo(bytes2);
-  }
-
   @Test
   void getRecoverableDataForSigning_shouldBeIdempotent() {
     // Given
@@ -443,10 +340,9 @@ class CardCertificateTest {
             .certType((byte) 0x91)
             .structureVersion((byte) 0x01)
             .issuerKeyReference(issuerKeyReference)
-            .cardAid(cardAid)
+            .cardAidUnpaddedValue(cardAid.getUnpaddedValue())
             .cardSerialNumber(cardSerialNumber)
             .cardIndex(cardIndex)
-            .signature(signature)
             .startDate(startDate)
             .endDate(endDate)
             .cardRights((byte) 0x0F)

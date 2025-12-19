@@ -48,7 +48,12 @@ class CalypsoCertificateLegacyPrimeApiFactoryAdapterTest {
     KeyFactory keyFactory = KeyFactory.getInstance("RSA");
     validRsaPublicKey = (RSAPublicKey) keyFactory.generatePublic(spec);
 
-    pcaPublicKeyReference = new byte[] {0x01, 0x02, 0x03};
+    // Create a valid 29-byte key reference
+    pcaPublicKeyReference = new byte[29];
+    pcaPublicKeyReference[0] = 0x0A; // AID size = 10
+    for (int i = 1; i < 29; i++) {
+      pcaPublicKeyReference[i] = (byte) i;
+    }
 
     // Add issuer key to store
     factory
@@ -199,7 +204,12 @@ class CalypsoCertificateLegacyPrimeApiFactoryAdapterTest {
   @Test
   void integrationTest_shouldCreateGeneratorsUsingSharedStore() {
     // Given
-    byte[] anotherKeyRef = new byte[] {0x04, 0x05, 0x06};
+    // Create another valid 29-byte key reference
+    byte[] anotherKeyRef = new byte[29];
+    anotherKeyRef[0] = 0x08; // AID size = 8
+    for (int i = 1; i < 29; i++) {
+      anotherKeyRef[i] = (byte) (0x10 + i);
+    }
     factory
         .getCalypsoCertificateLegacyPrimeStore()
         .addPcaPublicKey(anotherKeyRef, validRsaPublicKey);
