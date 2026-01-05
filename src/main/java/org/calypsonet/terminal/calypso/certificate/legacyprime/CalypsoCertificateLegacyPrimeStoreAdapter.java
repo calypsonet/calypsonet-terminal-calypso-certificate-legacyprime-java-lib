@@ -12,6 +12,7 @@
 package org.calypsonet.terminal.calypso.certificate.legacyprime;
 
 import java.security.interfaces.RSAPublicKey;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import org.eclipse.keyple.core.util.Assert;
@@ -73,13 +74,21 @@ final class CalypsoCertificateLegacyPrimeStoreAdapter
    */
   @Override
   public void addPcaPublicKey(byte[] pcaPublicKeyReference, byte[] pcaPublicKeyModulus) {
+    // 1. Vérification des nulls en premier
     Assert.getInstance()
         .notNull(pcaPublicKeyReference, "pcaPublicKeyReference")
-        .notNull(pcaPublicKeyModulus, "pcaPublicKeyModulus")
-        .isEqual(
-            pcaPublicKeyModulus.length,
-            CertificateConstants.RSA_MODULUS_SIZE,
-            "pcaPublicKeyModulus length");
+        .notNull(pcaPublicKeyModulus, "pcaPublicKeyModulus");
+
+    if (pcaPublicKeyModulus.length == CertificateConstants.RSA_MODULUS_SIZE + 1
+        && pcaPublicKeyModulus[0] == 0) {
+      pcaPublicKeyModulus = Arrays.copyOfRange(pcaPublicKeyModulus, 1, pcaPublicKeyModulus.length);
+    } else {
+      Assert.getInstance()
+          .isEqual(
+              pcaPublicKeyModulus.length,
+              CertificateConstants.RSA_MODULUS_SIZE,
+              "pcaPublicKeyModulus length");
+    }
 
     String keyRef = HexUtil.toHex(pcaPublicKeyReference);
     checkKeyRefNotExists(keyRef);
