@@ -1,4 +1,4 @@
-rootProject.name = "calypsonet-terminal-calypso-certificate-legacyprime-java-lib"
+rootProject.name = "calypsonet-terminal-calypso-certificate-legacyprime-jvm-lib"
 
 pluginManagement {
   repositories {

@@ -1,4 +1,4 @@
-# Calypsonet Terminal Calypso Certificate Legacy Prime Java Lib
+# Calypsonet Terminal Calypso Certificate Legacy Prime JVM Lib
 
 ## Overview
 

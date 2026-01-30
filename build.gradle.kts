@@ -15,7 +15,7 @@ plugins {
 
 dependencies {
   implementation(
-      "org.calypsonet:calypsonet-terminal-calypso-certificate-legacyprime-java-api:0.1.0-SNAPSHOT") {
+      "org.calypsonet:calypsonet-terminal-calypso-certificate-legacyprime-jvm-api:0.1.0-SNAPSHOT") {
         isChanging = true
       }
   implementation("org.eclipse.keyple:keyple-util-java-lib:2.4.0")
