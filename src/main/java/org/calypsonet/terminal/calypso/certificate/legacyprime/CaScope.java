@@ -61,6 +61,6 @@ enum CaScope {
         return scope;
       }
     }
-    throw new IllegalArgumentException("Unknown CA scope: 0x" + HexUtil.toHex(value));
+    throw new IllegalArgumentException("Unsupported CaScope: 0x" + HexUtil.toHex(value));
   }
 }

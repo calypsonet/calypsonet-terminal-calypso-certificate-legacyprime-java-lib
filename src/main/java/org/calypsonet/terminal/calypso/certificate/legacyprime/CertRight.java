@@ -66,6 +66,6 @@ enum CertRight {
         return right;
       }
     }
-    throw new IllegalArgumentException("Unknown certificate right: " + value);
+    throw new IllegalArgumentException("Unsupported CertRight: " + value);
   }
 }

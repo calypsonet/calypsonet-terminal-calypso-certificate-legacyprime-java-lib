@@ -67,6 +67,6 @@ enum OperatingMode {
         return mode;
       }
     }
-    throw new IllegalArgumentException("Unknown truncation mode: " + value);
+    throw new IllegalArgumentException("Unsupported OperatingMode: " + value);
   }
 }

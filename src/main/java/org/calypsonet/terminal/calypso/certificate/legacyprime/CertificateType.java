@@ -58,6 +58,6 @@ enum CertificateType {
         return type;
       }
     }
-    throw new IllegalArgumentException("Unknown certificate type: 0x" + HexUtil.toHex(value));
+    throw new IllegalArgumentException("Unsupported CertificateType: 0x" + HexUtil.toHex(value));
   }
 }
